@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Flight Booking Simulator</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 18px; }
+    input, select, button { padding:8px; margin:6px; }
+    table { border-collapse: collapse; width:100%; margin-top:12px; }
+    th, td { padding:8px; border:1px solid #ddd; text-align:left; }
+  </style>
+</head>
+<body>
+  <h2>Flight Booking Simulator (Demo)</h2>
+  <div>
+    <input id="origin" placeholder="Origin (e.g. DEL)" />
+    <input id="destination" placeholder="Destination (e.g. BOM)" />
+    <input id="date" type="date" />
+    <select id="sort">
+      <option value="">Sort by</option>
+      <option value="price">Price</option>
+      <option value="duration">Duration</option>
+    </select>
+    <button onclick="search()">Search</button>
+    <button onclick="loadAll()">Load All</button>
+  </div>
+  <div id="results"></div>
+
+<script>
+const API = "http://127.0.0.1:8000";  // ⭐ YOUR FASTAPI BACKEND URL
+
+async function render(list){
+  if(!list || list.length===0){
+    document.getElementById('results').innerHTML = "<p>No flights.</p>"; 
+    return;
+  }
+
+  let html = '<table><tr><th>Flight</th><th>Airline</th><th>From</th><th>To</th><th>Depart</th><th>Arrive</th><th>Seats</th><th>Price</th><th>Action</th></tr>';
+  list.forEach(f=>{
+    html += `<tr>
+      <td>${f.flight_number}</td>
+      <td>${f.airline || 'Demo Airline'}</td>
+      <td>${f.origin}</td>
+      <td>${f.destination}</td>
+      <td>${new Date(f.departure_time).toLocaleString()}</td>
+      <td>${new Date(f.arrival_time).toLocaleString()}</td>
+      <td>${f.available_seats}/${f.total_seats || 100}</td>
+      <td>₹${f.price}</td>
+      <td>
+        <button onclick="book(${f.flight_id})">Book 1</button>
+        <button onclick="history(${f.flight_id})">History</button>
+      </td>
+    </tr>`;
+  });
+  html += '</table>';
+  document.getElementById('results').innerHTML = html;
+}
+
+async function loadAll(){ 
+  const res = await fetch(`${API}/flights`);     // ⭐ FIXED
+  const data = await res.json(); 
+  render(data); 
+}
+
+async function search(){
+  const o = document.getElementById('origin').value; 
+  const d = document.getElementById('destination').value;
+  const date = document.getElementById('date').value; 
+  const sort = document.getElementById('sort').value;
+
+  if(!o || !d || !date){
+    alert("Please enter origin, destination, and date");
+    return;
+  }
+
+  const params = new URLSearchParams();
+  params.append('origin', o);
+  params.append('destination', d);
+  params.append('date', date);
+  if(sort) params.append('sort_by', sort);
+
+  const res = await fetch(`${API}/search?` + params.toString());   // ⭐ FIXED
+  if(res.ok){
+    const data = await res.json();
+    render(data);
+  } else {
+    const e = await res.json();
+    alert('Error: ' + (e.detail || JSON.stringify(e)));
+  }
+}
+
+async function book(id){
+  const res = await fetch(`${API}/book/${id}?seats=1`, {method:'POST'});  // ⭐ FIXED
+  if(res.ok){ 
+    const j = await res.json(); 
+    alert('Booked 1 seat — price: ₹' + j.price_per_seat); 
+    loadAll(); 
+  } else { 
+    const e = await res.json(); 
+    alert('Error: ' + (e.detail || JSON.stringify(e))); 
+  }
+}
+
+async function history(id){
+  const res = await fetch(`${API}/fare-history/${id}`);   // ⭐ FIXED
+  if(res.ok){
+    const data = await res.json();
+    if(data.length === 0) alert('No fare history');
+    else alert(data.map(h => `${new Date(h.changed_at).toLocaleString()}: ₹${h.new_fare} (${h.change_reason})`).join('\n'));
+  } else {
+    alert('Failed to load fare history');
+  }
+}
+
+// Load all flights on page load
+loadAll();
+</script>
+
+
+</script>
+</body>
+</html>
