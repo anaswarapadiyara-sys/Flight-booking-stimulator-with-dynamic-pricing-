@@ -55,6 +55,19 @@ class FareHistory(Base):
     changed_at = Column(DateTime, default=datetime.utcnow)
 
 
+class Booking(Base):
+    __tablename__ = "bookings"
+
+    booking_id = Column(Integer, primary_key=True, index=True)
+    pnr = Column(String(20), unique=True)
+    flight_id = Column(Integer, ForeignKey("flights.flight_id"))
+    passenger_name = Column(String(100))
+    seat_count = Column(Integer)
+    total_price = Column(Float)
+    status = Column(String(30))  # Confirmed/Paid/Cancelled
+    booked_at = Column(DateTime, default=datetime.utcnow)
+
+
 # Create tables if not exist
 Base.metadata.create_all(bind=engine)
 
@@ -103,6 +116,10 @@ def record_fare_history(db, flight: Flight, new_price, reason="Dynamic update"):
     )
     db.add(history)
     db.commit()
+
+
+def generate_pnr():
+    return "PNR" + str(random.randint(100000, 999999))
 
 
 # =============================
@@ -226,6 +243,133 @@ def get_fare_history(flight_id: int):
         for h in history
     ]
     return result
+
+
+@app.post("/create-booking/{flight_id}")
+def create_booking(flight_id: int, seats: int = 1, passenger: str = "Guest"):
+    db = SessionLocal()
+    flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
+
+    if not flight:
+        raise HTTPException(404, "Flight not found")
+
+    if seats < 1:
+        raise HTTPException(400, "Invalid seat count")
+
+    if flight.available_seats < seats:
+        raise HTTPException(400, "Not enough seats available")
+
+    # Reduce seats
+    flight.available_seats -= seats
+
+    # Calculate price
+    fare = calculate_dynamic_price(flight)
+    total_amount = round(fare * seats, 2)
+
+    # Create PNR
+    pnr_code = generate_pnr()
+
+    # Create booking record
+    booking = Booking(
+        pnr=pnr_code,
+        flight_id=flight.flight_id,
+        passenger_name=passenger,
+        seat_count=seats,
+        total_price=total_amount,
+        status="Confirmed",
+    )
+
+    db.add(booking)
+    db.commit()
+    db.refresh(booking)
+
+    return {
+        "message": "Booking created successfully",
+        "pnr": pnr_code,
+        "total_price": total_amount,
+        "seats": seats,
+        "status": "Confirmed",
+    }
+
+
+@app.post("/pay/{pnr}")
+def process_payment(pnr: str):
+    db = SessionLocal()
+    booking = db.query(Booking).filter(Booking.pnr == pnr).first()
+
+    if not booking:
+        raise HTTPException(404, "Invalid PNR")
+
+    if booking.status == "Paid":
+        return {"message": "Payment already completed"}
+
+    success = random.randint(1, 10) <= 7  # 70% chance
+
+    if success:
+        booking.status = "Paid"
+        db.commit()
+        return {"message": "Payment successful", "pnr": pnr, "status": "Paid"}
+
+    booking.status = "Payment Failed"
+    db.commit()
+    return {"message": "Payment Failed", "pnr": pnr, "status": "Payment Failed"}
+
+
+@app.get("/booking/{pnr}")
+def get_booking(pnr: str):
+    db = SessionLocal()
+    booking = db.query(Booking).filter(Booking.pnr == pnr).first()
+
+    if not booking:
+        raise HTTPException(404, "PNR Not Found")
+
+    return {
+        "pnr": booking.pnr,
+        "flight_id": booking.flight_id,
+        "passenger": booking.passenger_name,
+        "seats": booking.seat_count,
+        "total_price": booking.total_price,
+        "status": booking.status,
+        "booked_at": booking.booked_at,
+    }
+
+
+@app.delete("/cancel/{pnr}")
+def cancel_booking(pnr: str):
+    db = SessionLocal()
+    booking = db.query(Booking).filter(Booking.pnr == pnr).first()
+
+    if not booking:
+        raise HTTPException(404, "PNR not found")
+
+    if booking.status == "Cancelled":
+        return {"message": "Already cancelled"}
+
+    flight = db.query(Flight).filter(Flight.flight_id == booking.flight_id).first()
+    flight.available_seats += booking.seat_count
+
+    booking.status = "Cancelled"
+    db.commit()
+
+    return {"message": f"Booking {pnr} cancelled successfully"}
+
+
+@app.get("/bookings")
+def list_all_bookings():
+    db = SessionLocal()
+    bookings = db.query(Booking).all()
+
+    return [
+        {
+            "pnr": b.pnr,
+            "passenger": b.passenger_name,
+            "flight_id": b.flight_id,
+            "seats": b.seat_count,
+            "total_price": b.total_price,
+            "status": b.status,
+        }
+        for b in bookings
+    ]
 
 
 # =============================

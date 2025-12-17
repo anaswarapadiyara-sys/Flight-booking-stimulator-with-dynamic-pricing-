@@ -27,7 +27,7 @@
   <div id="results"></div>
 
 <script>
-const API = "http://127.0.0.1:8000";  // ⭐ YOUR FASTAPI BACKEND URL
+const API = "http://127.0.0.1:8000";  
 
 async function render(list){
   if(!list || list.length===0){
@@ -57,7 +57,7 @@ async function render(list){
 }
 
 async function loadAll(){ 
-  const res = await fetch(`${API}/flights`);     // ⭐ FIXED
+  const res = await fetch(`${API}/flights`);     
   const data = await res.json(); 
   render(data); 
 }
@@ -79,7 +79,7 @@ async function search(){
   params.append('date', date);
   if(sort) params.append('sort_by', sort);
 
-  const res = await fetch(`${API}/search?` + params.toString());   // ⭐ FIXED
+  const res = await fetch(`${API}/search?` + params.toString());  
   if(res.ok){
     const data = await res.json();
     render(data);
@@ -90,7 +90,7 @@ async function search(){
 }
 
 async function book(id){
-  const res = await fetch(`${API}/book/${id}?seats=1`, {method:'POST'});  // ⭐ FIXED
+  const res = await fetch(`${API}/book/${id}?seats=1`, {method:'POST'});  
   if(res.ok){ 
     const j = await res.json(); 
     alert('Booked 1 seat — price: ₹' + j.price_per_seat); 
@@ -102,7 +102,7 @@ async function book(id){
 }
 
 async function history(id){
-  const res = await fetch(`${API}/fare-history/${id}`);   // ⭐ FIXED
+  const res = await fetch(`${API}/fare-history/${id}`);   
   if(res.ok){
     const data = await res.json();
     if(data.length === 0) alert('No fare history');
