@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title>Sign In | Flight</title>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/styles2.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/ico" href="/static/img/favicon.ico">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="user-box">
+
+            <div>
+                <center>
+                    <img src="/static/img/icon_logo.png" height="35" style="margin-bottom: 2vh;">
+                    <h3>Log in to Flight</h3><br>
+                </center>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <form id="signin-form" style="width: 100%; margin-bottom: 5vh;">
+
+                <div class="form-group">
+                    <input class="form-control inp usrnm" type="text" name="username" placeholder="Username"
+                        autocomplete="off" autofocus>
+                </div>
+
+                <div class="form-group">
+                    <input class="form-control inp pswd" type="password" name="password" placeholder="Password"
+                        autocomplete="off">
+                    <span class="star">
+                        <small id="error-message"></small>
+                    </span>
+                </div>
+
+                <center>
+                    <input class="btn btn-danger" type="submit" value="Log in" style="margin-top: 10px; width: 95%;"
+                        disabled>
+                </center>
+            </form>
+
+            <div>
+                <center>
+                    Don't have an account?&nbsp;&nbsp;
+                    <a href="/register">Sign Up</a>
+                </center>
+            </div>
+
+        </div>
+
+    </div>
+    <script src="/static/js/login.js"></script>
+</body>
+
+</html>

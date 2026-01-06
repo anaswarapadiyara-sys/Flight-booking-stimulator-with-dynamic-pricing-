@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title>Payment | Flight</title>
+    <link rel="stylesheet" href="/static/css/payment_style.css">
+    <div id="head-placeholder"></div>
+
+</head>
+
+<body>
+    <div id="navbar-placeholder"></div>
+
+    <section class="section section1">
+        <div class="container">
+
+            <div class="payment-box">
+
+                <!-- Header -->
+                <div class="payment-box-head-div">
+                    <div class="payment-box-head">
+                        <h5>Payment Details</h5>
+                        <div class="display-td">
+                            <img class="card-img" src="/static/img/card.png" alt="card">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Form -->
+                <div class="payment-details-input-box">
+                    <form action="/paymentprocess.html" method="POST">
+                        <div class="payment-ref">
+                            <strong>Booking PNR:</strong>
+                            <span id="display_pnr"></span>
+                        </div>
+
+
+
+                        <input type="hidden" id="ticket1" name="ticket" required>
+                        <input type="hidden" id="ticket2" name="ticket2">
+                        <input type="hidden" name="pnr" value="PNR">
+
+                        <!-- Amount -->
+                        <div class="row payment-amount-div">
+                            <div class="form-group">
+                                <label for="payment_amount">PAYMENT AMOUNT</label>
+                                <input type="text" class="form-control" id="payment_amount" value="$ 450.00" disabled>
+                            </div>
+                        </div>
+
+                        <!-- Card Number -->
+                        <div class="row card-no-div">
+                            <div class="form-group">
+                                <label for="card_number">CARD NUMBER</label>
+                                <div class="input-group">
+                                    <input type="tel" pattern="[0-9]*" class="form-control" id="card_number"
+                                        name="cardNumber" autocomplete="off" maxlength="19"
+                                        placeholder="Enter card number" required>
+
+                                    <div class="input-group-append">
+                                        <span class="input-group-text">
+                                            <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-credit-card"
+                                                fill="currentColor">
+                                                <path fill-rule="evenodd"
+                                                    d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4z" />
+                                                <path
+                                                    d="M2 10a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-1z" />
+                                            </svg>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Holder -->
+                        <div class="row card-holder-div">
+                            <div class="form-group">
+                                <label for="cardHolderName">CARD HOLDER'S NAME</label>
+                                <input type="text" name="cardHolderName" class="form-control" id="cardHolderName"
+                                    placeholder="Enter name" required>
+                            </div>
+                        </div>
+
+                        <!-- Expiry & CVV -->
+                        <div class="row expiry-cvv">
+                            <div class="row">
+
+                                <div class="left-col">
+                                    <label>EXPIRY DATE</label>
+                                    <div class="expiry-input-div">
+
+                                        <select name="expMonth" class="form-control" required>
+                                            <option value="">Month</option>
+                                            <option>01</option>
+                                            <option>02</option>
+                                            <option>03</option>
+                                            <option>04</option>
+                                            <option>05</option>
+                                            <option>06</option>
+                                            <option>07</option>
+                                            <option>08</option>
+                                            <option>09</option>
+                                            <option>10</option>
+                                            <option>11</option>
+                                            <option>12</option>
+                                        </select>
+
+                                        <select name="expYear" class="form-control" required>
+                                            <option value="">Year</option>
+                                            <option>2026</option>
+                                            <option>2027</option>
+                                            <option>2028</option>
+                                            <option>2029</option>
+                                            <option>2030</option>
+                                            <option>2031</option>
+                                            <option>2032</option>
+                                            <option>2033</option>
+                                            <option>2034</option>
+                                            <option>2035</option>
+                                        </select>
+
+                                    </div>
+                                </div>
+
+                                <div class="right-col">
+                                    <div class="form-group">
+                                        <label for="cvv_number">CVV CODE</label>
+                                        <input type="password" pattern="[0-9]*" class="form-control" placeholder="CVV"
+                                            id="cvv_number" name="cvv" maxlength="3" required>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="payment-btn">
+                            <button class="btn btn-danger btn-primary" onclick="makePayment()" id="pay-btn"
+                                type="button">
+                                Make payment
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </section>
+    <div id="footer-placeholder"></div>
+    <script src="/static/js/include.js"></script>
+    <script src="/static/js/layout.js"></script>
+    <script src="/static/js/payment.js" defer></script>
+</body>
+
+</html>

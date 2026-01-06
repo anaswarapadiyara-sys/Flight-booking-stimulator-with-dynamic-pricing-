@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Flight Booking</title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+
+  <!-- Fonts -->
+  <link rel="stylesheet" href="https://use.typekit.net/cav5lva.css">
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/layout_style.css">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/ico" href="/static/img/favicon.ico">
+
+  <!-- JS -->
+  <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+  <script src="/static/js/layout.js"></script>
+</head>
+
+<body>
+
+<div class="container-fluid">
+
+  <!-- ================= NAVBAR ================= -->
+  <nav class="navbar navbar-expand-lg navbar-light">
+    <a class="navbar-brand" href="/">
+      <img src="/static/img/icon_logo.png" height="34" alt="Logo">
+    </a>
+
+    <button class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item active">
+          <a class="nav-link" href="/">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/bookings">My Bookings</a>
+        </li>
+      </ul>
+
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <button class="btn btn-outline-danger"
+                  style="border-radius:25rem;"
+                  onclick="window.location.href='/login';">
+            Login
+          </button>
+        </li>
+      </ul>
+
+    </div>
+  </nav>
+
+  <!-- ================= PAGE CONTENT ================= -->
+  <main>
+    <!-- Page-specific content goes here -->
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer>
+    <div class="container">
+
+      <div class="logo-container">
+        <img src="/static/img/icon_logo.png">
+      </div>
+
+      <div class="footer-content">
+        <div class="links-container">
+          <ul class="link-list">
+            <li class="list-item"><a class="footer-links" href="/contact">Contact Us</a></li>
+            <li class="list-item"><a class="footer-links" href="/about">About Us</a></li>
+            <li class="list-item"><a class="footer-links" href="/privacy-policy">Privacy Policy</a></li>
+            <li class="list-item"><a class="footer-links" href="/terms">Terms & Conditions</a></li>
+          </ul>
+        </div>
+
+        <div class="quote-container">
+          <div class="quote">
+            “Surround yourself with people that are smarter than you,
+            give them everything they need to grow,
+            and your business will thrive.”
+          </div>
+          <div class="quote-by">- Richard Branson</div>
+        </div>
+      </div>
+
+      <!-- ================= SOCIAL ICONS ================= -->
+      <div class="social-links">
+        <div class="social-icons">
+
+          <!-- Facebook -->
+          <a href="#" class="social-icon">
+            <svg width="20" height="20" viewBox="0 0 8 16">
+              <path fill="#1A1A1A"
+                d="m2 5.33h-2v2.66h2v8h3.33v-8h2.43l.24-2.66h-2.67v-1.11c0-.64.13-.89.74-.89h1.92v-3.33h-2.54c-2.4 0-3.46 1.06-3.46 3.08z"/>
+            </svg>
+          </a>
+
+          <!-- Twitter -->
+          <a href="#" class="social-icon">
+            <svg width="20" height="20" viewBox="0 -1 16 14">
+              <path fill="#1A1A1A"
+                d="m16 1.7c-.59.26-1.22.44-1.89.52..."/>
+            </svg>
+          </a>
+
+          <!-- Instagram -->
+          <a href="#" class="social-icon">
+            <svg height="25" width="25" viewBox="10 22 53 30">
+              <path fill="#1A1A1A"
+                d="m29.75 14.32c1.16.05..."/>
+            </svg>
+          </a>
+
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+</div>
+
+
+</body>
+</html>

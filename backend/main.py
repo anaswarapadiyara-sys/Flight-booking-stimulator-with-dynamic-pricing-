@@ -1,6 +1,13 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Form, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from fastapi import Body
+from jinja2 import Template
+
+from jinja2 import Environment, FileSystemLoader
+from io import BytesIO
+
 from fastapi.responses import JSONResponse
 from sqlalchemy import (
     create_engine,
@@ -12,10 +19,29 @@ from sqlalchemy import (
     ForeignKey,
 )
 from sqlalchemy.orm import sessionmaker, declarative_base, scoped_session
+from sqlalchemy.orm import Session
+
+from pydantic import BaseModel
 from datetime import datetime, timedelta
 import random
+import uuid
 import threading
 import time
+import os
+import pdfkit
+
+
+conf = ConnectionConfig(
+    MAIL_USERNAME="your_email@gmail.com",
+    MAIL_PASSWORD="your_app_password",
+    MAIL_FROM="your_email@gmail.com",
+    MAIL_SERVER="smtp.gmail.com",
+    MAIL_PORT=587,
+    MAIL_STARTTLS=True,
+    MAIL_SSL_TLS=False,
+    USE_CREDENTIALS=True,
+)
+
 
 # =============================
 #  DATABASE CONFIG (MySQL)
@@ -62,14 +88,84 @@ class Booking(Base):
     pnr = Column(String(20), unique=True)
     flight_id = Column(Integer, ForeignKey("flights.flight_id"))
     passenger_name = Column(String(100))
+    email = Column(String(100))
     seat_count = Column(Integer)
     total_price = Column(Float)
     status = Column(String(30))  # Confirmed/Paid/Cancelled
     booked_at = Column(DateTime, default=datetime.utcnow)
 
 
+class BookingRequest(BaseModel):
+    seats: int
+    passenger: str
+    email: str
+
+
+def build_ticket_html(booking, flight):
+    passengers_html = ""
+    passengers = booking.passenger.split(",") if booking.passenger else []
+
+    for i, p in enumerate(passengers, start=1):
+        passengers_html += f"""
+        <tr>
+            <td>{i}</td>
+            <td>{p.strip()}</td>
+            <td>ECONOMY</td>
+        </tr>
+        """
+
+    return f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body {{ font-family: Arial; }}
+table {{ width: 100%; border-collapse: collapse; }}
+th, td {{ border: 1px solid #000; padding: 6px; }}
+h2 {{ text-align: center; }}
+</style>
+</head>
+
+<body>
+
+<h2>E-Ticket</h2>
+
+<p><b>PNR:</b> {booking.pnr}</p>
+<p><b>Status:</b> {booking.status}</p>
+<p><b>Total Amount:</b> ₹{booking.total_price}</p>
+
+<h3>Passengers</h3>
+<table>
+<tr><th>#</th><th>Name</th><th>Class</th></tr>
+{passengers_html}
+</table>
+
+<h3>Flight Details</h3>
+<p><b>From:</b> {flight.origin}</p>
+<p><b>To:</b> {flight.destination}</p>
+<p><b>Departure:</b> {flight.departure_time}</p>
+<p><b>Arrival:</b> {flight.arrival_time}</p>
+
+</body>
+</html>
+"""
+
+
 # Create tables if not exist
 Base.metadata.create_all(bind=engine)
+
+
+from fastapi.responses import RedirectResponse
+
+
+# Model for User (add this to your existing models)
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(100), unique=True, nullable=False)
+    password = Column(String(100), nullable=False)
+
 
 # =============================
 #  FASTAPI APP
@@ -82,6 +178,42 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 def home():
     return FileResponse("static/index.html")
+
+
+# Search page (UI)
+@app.get("/search")
+def search_page():
+    return FileResponse("static/search.html")
+
+
+@app.get("/book")
+def book_page():
+    return FileResponse("static/book.html")
+
+
+@app.get("/booking")
+def booking_page():
+    return FileResponse("static/booking.html")
+
+
+@app.get("/payment")
+def payment_page():
+    return FileResponse("static/payment.html")
+
+
+@app.get("/paymentprocess")
+def paymentprocess_page():
+    return FileResponse("static/paymentprocess.html")
+
+
+@app.get("/ticket")
+def ticket_page():
+    return FileResponse("static/e-ticket.html")
+
+
+@app.get("/login")
+def login_page():
+    return FileResponse("static/login.html")
 
 
 # =============================
@@ -106,16 +238,28 @@ def calculate_dynamic_price(flight: Flight):
 
 
 def record_fare_history(db, flight: Flight, new_price, reason="Dynamic update"):
-    old_price = calculate_dynamic_price(flight)
-    history = FareHistory(
-        flight_id=flight.flight_id,
-        old_fare=old_price,
-        new_fare=new_price,
-        change_reason=reason,
-        changed_at=datetime.utcnow(),
+    # Get last fare history record
+    last_record = (
+        db.query(FareHistory)
+        .filter(FareHistory.flight_id == flight.flight_id)
+        .order_by(FareHistory.changed_at.desc())
+        .first()
     )
-    db.add(history)
-    db.commit()
+    old_price = (
+        last_record.new_fare if last_record else flight.base_fare
+    )  # use last new_price or base fare
+
+    # Only record if price changed
+    if old_price != new_price:
+        history = FareHistory(
+            flight_id=flight.flight_id,
+            old_fare=old_price,
+            new_fare=new_price,
+            change_reason=reason,
+            changed_at=datetime.now(),
+        )
+        db.add(history)
+        db.commit()
 
 
 def generate_pnr():
@@ -147,60 +291,88 @@ def get_all_flights():
     return result
 
 
-@app.get("/search")
+@app.get("/flight/{flight_id}")
+def get_flight_by_id(flight_id: int):
+    db = SessionLocal()
+    flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
+
+    if not flight:
+        raise HTTPException(404, "Flight not found")
+
+    return {
+        "flight_id": flight.flight_id,
+        "flight_number": flight.flight_number,
+        "origin": flight.origin,
+        "destination": flight.destination,
+        "departure_time": flight.departure_time.isoformat(),
+        "arrival_time": flight.arrival_time.isoformat(),
+        "price": calculate_dynamic_price(flight),
+        "available_seats": flight.available_seats,
+        "airline": "Demo Airlines",
+    }
+
+
+from sqlalchemy import cast, Date
+
+
+@app.get("/api/search")
 def search_flights(
     origin: str = Query(...),
     destination: str = Query(...),
     date: str = Query(...),
-    sort_by: str = Query(None),  # price or duration
+    sort_by: str = Query(None),
 ):
     db = SessionLocal()
     try:
-        travel_date = datetime.strptime(date, "%Y-%m-%d")
-    except:
-        raise HTTPException(
-            status_code=400, detail="Invalid date format (Use YYYY-MM-DD)"
+        # 1. Convert the string date from JS into a Python date object
+        try:
+            search_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except Exception:
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Use YYYY-MM-DD"
+            )
+
+        # 2. Query with CAST to ensure we compare DATE to DATE (ignoring timestamp)
+        flights = (
+            db.query(Flight)
+            .filter(
+                Flight.origin == origin,
+                Flight.destination == destination,
+                cast(Flight.departure_time, Date) == search_date,
+            )
+            .all()
         )
 
-    flights = (
-        db.query(Flight)
-        .filter(
-            Flight.origin == origin,
-            Flight.destination == destination,
-            Flight.departure_time.between(
-                datetime.combine(travel_date, datetime.min.time()),
-                datetime.combine(travel_date, datetime.max.time()),
-            ),
-        )
-        .all()
-    )
+        if not flights:
+            return []
 
-    if not flights:
-        raise HTTPException(status_code=404, detail="No flights found")
+        # 3. Build result list
+        result = []
+        for f in flights:
+            result.append(
+                {
+                    "flight_id": f.flight_id,
+                    "flight_number": f.flight_number,
+                    "origin": f.origin,
+                    "destination": f.destination,
+                    "departure_time": f.departure_time.isoformat(),
+                    "arrival_time": f.arrival_time.isoformat(),
+                    "duration": (f.arrival_time - f.departure_time).total_seconds()
+                    / 3600,
+                    "price": calculate_dynamic_price(f),
+                    "available_seats": f.available_seats,
+                }
+            )
 
-    result = []
-    for f in flights:
-        result.append(
-            {
-                "flight_id": f.flight_id,
-                "flight_number": f.flight_number,
-                "origin": f.origin,
-                "destination": f.destination,
-                "departure_time": f.departure_time,
-                "arrival_time": f.arrival_time,
-                "duration": (f.arrival_time - f.departure_time).total_seconds() / 3600,
-                "price": calculate_dynamic_price(f),
-                "available_seats": f.available_seats,
-            }
-        )
+        # 4. Apply Sorting
+        if sort_by == "price":
+            result.sort(key=lambda x: x["price"])
+        elif sort_by == "duration":
+            result.sort(key=lambda x: x["duration"])
 
-    # Sorting
-    if sort_by == "price":
-        result.sort(key=lambda x: x["price"])
-    elif sort_by == "duration":
-        result.sort(key=lambda x: x["duration"])
-
-    return result
+        return result
+    finally:
+        db.close()
 
 
 @app.post("/book/{flight_id}")
@@ -245,55 +417,115 @@ def get_fare_history(flight_id: int):
     return result
 
 
+# @app.post("/create-booking/{flight_id}")
+# def create_booking(flight_id: int, request: BookingRequest = Body(...)):
+#     db = SessionLocal()
+#     print("Received request body:", request.dict())
+#     try:
+#         flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
+
+#         if not flight:
+#             raise HTTPException(status_code=404, detail="Flight not found")
+
+#         if flight.available_seats < request.seats:
+#             raise HTTPException(status_code=400, detail="Not enough seats available")
+
+#         # =============================
+#         # DYNAMIC PRICING
+#         # =============================
+#         price_per_seat = calculate_dynamic_price(flight)
+#         total_amount = round(price_per_seat * request.seats, 2)
+
+#         # =============================
+#         # UPDATE SEATS
+#         # =============================
+#         flight.available_seats -= request.seats
+
+#         # =============================
+#         # RECORD FARE HISTORY
+#         # =============================
+#         history = FareHistory(
+#             flight_id=flight.flight_id,
+#             old_fare=flight.base_fare,
+#             new_fare=price_per_seat,
+#             change_reason="Booking",
+#             changed_at=datetime.utcnow(),
+#         )
+#         db.add(history)
+
+#         # =============================
+#         # CREATE BOOKING
+#         # =============================
+#         pnr_code = generate_pnr()
+
+#         booking = Booking(
+#             pnr=pnr_code,
+#             flight_id=flight.flight_id,
+#             passenger_name=request.passenger,
+#             email=request.email,
+#             seat_count=request.seats,
+#             total_price=total_amount,
+#             status="Confirmed",
+#         )
+
+#         db.add(booking)
+#         db.commit()
+#         db.refresh(booking)
+
+#         return {
+#             "message": "Booking created successfully",
+#             "pnr": pnr_code,
+#             "total_price": total_amount,
+#             "seats": request.seats,
+#             "status": "Confirmed",
+#         }
+
+#     finally:
+#         db.close()
+
+
 @app.post("/create-booking/{flight_id}")
-def create_booking(flight_id: int, seats: int = 1, passenger: str = "Guest"):
+def create_booking(flight_id: int, request: BookingRequest = Body(...)):
     db = SessionLocal()
-    flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
+    try:
+        print(" RECEIVED BODY:", request.model_dump())  # DEBUG (VERY IMPORTANT)
 
-    if not flight:
-        raise HTTPException(404, "Flight not found")
+        flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
+        if not flight:
+            raise HTTPException(status_code=404, detail="Flight not found")
 
-    if seats < 1:
-        raise HTTPException(400, "Invalid seat count")
+        if flight.available_seats < request.seats:
+            raise HTTPException(status_code=400, detail="Not enough seats")
 
-    if flight.available_seats < seats:
-        raise HTTPException(400, "Not enough seats available")
+        price_per_seat = calculate_dynamic_price(flight)
+        total_amount = round(price_per_seat * request.seats, 2)
 
-    # Reduce seats
-    flight.available_seats -= seats
+        flight.available_seats -= request.seats
 
-    # Calculate price
-    fare = calculate_dynamic_price(flight)
-    total_amount = round(fare * seats, 2)
+        pnr_code = generate_pnr()
 
-    # Create PNR
-    pnr_code = generate_pnr()
+        booking = Booking(
+            pnr=pnr_code,
+            flight_id=flight.flight_id,
+            passenger_name=request.passenger,
+            email=request.email,
+            seat_count=request.seats,
+            total_price=total_amount,
+            status="Confirmed",
+        )
 
-    # Create booking record
-    booking = Booking(
-        pnr=pnr_code,
-        flight_id=flight.flight_id,
-        passenger_name=passenger,
-        seat_count=seats,
-        total_price=total_amount,
-        status="Confirmed",
-    )
+        db.add(booking)
+        db.commit()
+        db.refresh(booking)
 
-    db.add(booking)
-    db.commit()
-    db.refresh(booking)
+        return {"pnr": pnr_code, "total_price": total_amount, "seats": request.seats}
 
-    return {
-        "message": "Booking created successfully",
-        "pnr": pnr_code,
-        "total_price": total_amount,
-        "seats": seats,
-        "status": "Confirmed",
-    }
+    finally:
+        db.close()
 
 
 @app.post("/pay/{pnr}")
-def process_payment(pnr: str):
+async def process_payment(pnr: str):
     db = SessionLocal()
     booking = db.query(Booking).filter(Booking.pnr == pnr).first()
 
@@ -301,18 +533,28 @@ def process_payment(pnr: str):
         raise HTTPException(404, "Invalid PNR")
 
     if booking.status == "Paid":
-        return {"message": "Payment already completed"}
+        return {"message": "Payment already completed", "status": "Paid"}
 
-    success = random.randint(1, 10) <= 7  # 70% chance
-
-    if success:
-        booking.status = "Paid"
-        db.commit()
-        return {"message": "Payment successful", "pnr": pnr, "status": "Paid"}
-
-    booking.status = "Payment Failed"
+    booking.status = "Paid"
     db.commit()
-    return {"message": "Payment Failed", "pnr": pnr, "status": "Payment Failed"}
+
+    message = MessageSchema(
+        subject="Your Flight Ticket",
+        recipients=[booking.email],
+        body=f"""
+Your booking is confirmed 🎉
+
+PNR: {booking.pnr}
+
+Download your ticket:
+http://127.0.0.1:8000/ticket-pdf/{booking.pnr}
+""",
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)
+
+    return {"message": "Payment successful", "pnr": pnr, "status": "Paid"}
 
 
 @app.get("/booking/{pnr}")
@@ -336,22 +578,29 @@ def get_booking(pnr: str):
 
 @app.delete("/cancel/{pnr}")
 def cancel_booking(pnr: str):
-    db = SessionLocal()
-    booking = db.query(Booking).filter(Booking.pnr == pnr).first()
+    db = SessionLocal()  # Manual start
+    try:
+        booking = db.query(Booking).filter(Booking.pnr == pnr).first()
 
-    if not booking:
-        raise HTTPException(404, "PNR not found")
+        if not booking:
+            raise HTTPException(status_code=404, detail="PNR not found")
 
-    if booking.status == "Cancelled":
-        return {"message": "Already cancelled"}
+        if booking.status.lower() == "cancelled":
+            return {"message": "Already cancelled"}
 
-    flight = db.query(Flight).filter(Flight.flight_id == booking.flight_id).first()
-    flight.available_seats += booking.seat_count
+        flight = db.query(Flight).filter(Flight.flight_id == booking.flight_id).first()
+        if flight:
+            # Matches 'seats' from your JS
+            flight.available_seats += booking.seat_count
 
-    booking.status = "Cancelled"
-    db.commit()
-
-    return {"message": f"Booking {pnr} cancelled successfully"}
+        booking.status = "Cancelled"
+        db.commit()
+        return {"message": f"Booking {pnr} cancelled successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 @app.get("/bookings")
@@ -367,9 +616,146 @@ def list_all_bookings():
             "seats": b.seat_count,
             "total_price": b.total_price,
             "status": b.status,
+            "booked_at": b.booked_at.isoformat(),
         }
         for b in bookings
     ]
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/login")
+async def login(username: str = Form(...), password: str = Form(...)):
+    db = SessionLocal()
+    try:
+        # 1. Debug Print (Check your terminal to see if data arrives)
+        print(f"Login attempt for: {username}")
+
+        # 2. Query the user
+        user = db.query(User).filter(User.username == username).first()
+
+        # 3. Validation
+        if not user:
+            print("User not found in database")
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "User does not exist"},
+            )
+
+        if user.password != password:
+            print("Password mismatch")
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "Incorrect password"},
+            )
+
+        return {"status": "success", "message": "Login successful"}
+
+    except Exception as e:
+        # This catch block prevents the 500 error from being silent
+        print(f"DATABASE ERROR: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": "Internal Server Database Error"},
+        )
+    finally:
+        db.close()
+
+
+@app.get("/ticket-pdf/{pnr}")
+async def generate_ticket_pdf(pnr: str):
+    path_to_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+    config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
+
+    db = SessionLocal()
+    try:
+        booking = db.query(Booking).filter(Booking.pnr == pnr).first()
+        flight = db.query(Flight).filter(Flight.flight_id == booking.flight_id).first()
+
+        # 1. Build the rows for the passengers table
+        passengers_list = booking.passenger_name.split(",")
+        rows = ""
+        for i, name in enumerate(passengers_list):
+            row_class = "tr-odd" if i % 2 == 0 else "tr-even"
+            rows += f'<tr class="{row_class}"><td>{i+1}</td><td>{name.strip()}</td><td>ECONOMY</td></tr>'
+
+        # 2. THE DESIGN (The html_template variable)
+        # We use f-strings to put flight.origin, pnr, etc., into the HTML
+        html_template = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: sans-serif; padding: 20px; color: #333; }}
+                .header {{ display: block; border-bottom: 2px solid red; padding-bottom: 10px; }}
+                .logo {{ color: red; font-size: 24px; font-weight: bold; }}
+                .ticket-title {{ float: right; font-size: 24px; color: #666; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+                th, td {{ border: 1px solid #ddd; padding: 10px; text-align: left; }}
+                .caption {{ background-color: #a9a9a9; color: white; font-weight: bold; }}
+                .tr-even {{ background-color: #f9f9f9; }}
+                .total-section {{ text-align: right; margin-top: 20px; font-size: 18px; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <span class="logo">FLIGHT INC.</span>
+                <span class="ticket-title">E-TICKET</span>
+            </div>
+
+            <table>
+                <tr class="caption"><td colspan="4">BOOKING DETAILS</td></tr>
+                <tr>
+                    <th>PNR</th><td><strong>{pnr}</strong></td>
+                    <th>STATUS</th><td>CONFIRMED</td>
+                </tr>
+                <tr class="tr-even">
+                    <th>FLIGHT DATE</th><td>{flight.departure_time.strftime('%Y-%m-%d')}</td>
+                    <th>BOOKED AT</th><td>{booking.booked_at.strftime('%Y-%m-%d')}</td>
+                </tr>
+            </table>
+
+            <table>
+                <tr class="caption"><td colspan="3">PASSENGERS</td></tr>
+                <tr><th>#</th><th>Name</th><th>Class</th></tr>
+                {rows}
+            </table>
+
+            <table>
+                <tr class="caption"><td colspan="2">FLIGHT ITINERARY</td></tr>
+                <tr>
+                    <td><strong>FROM:</strong> {flight.origin}</td>
+                    <td><strong>DEPARTURE:</strong> {flight.departure_time.strftime('%H:%M')}</td>
+                </tr>
+                <tr class="tr-even">
+                    <td><strong>TO:</strong> {flight.destination}</td>
+                    <td><strong>ARRIVAL:</strong> {flight.arrival_time.strftime('%H:%M')}</td>
+                </tr>
+            </table>
+
+            <div class="total-section">
+                <strong>TOTAL AMOUNT PAID: ₹ {booking.total_price}</strong>
+            </div>
+        </body>
+        </html>
+        """
+
+        # 3. Convert that HTML string into a PDF
+        pdf_content = pdfkit.from_string(html_template, False, configuration=config)
+
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=Ticket_{pnr}.pdf"},
+        )
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return JSONResponse(status_code=500, content={"message": str(e)})
+    finally:
+        db.close()
 
 
 # =============================
@@ -377,14 +763,36 @@ def list_all_bookings():
 # =============================
 def simulate_demand():
     while True:
-        db = SessionLocal()  # get a session
+        db = SessionLocal()
         try:
             flights = db.query(Flight).all()
             for f in flights:
-                if f.available_seats > 0:
-                    seats_to_reduce = random.randint(0, 3)
-                    f.available_seats = max(0, f.available_seats - seats_to_reduce)
-            db.commit()  # commit once after all updates
+                # if f.available_seats > 0:
+                #     # Randomly reduce seats to simulate demand
+                #     seats_to_reduce = random.randint(0, 3)
+                #     f.available_seats = max(0, f.available_seats - seats_to_reduce)
+
+                # Calculate new dynamic price
+                new_price = calculate_dynamic_price(f)
+
+                # Check latest fare history
+                last_record = (
+                    db.query(FareHistory)
+                    .filter(FareHistory.flight_id == f.flight_id)
+                    .order_by(FareHistory.changed_at.desc())
+                    .first()
+                )
+
+                # Record only if price changed or no record exists
+                if not last_record or last_record.new_fare != new_price:
+                    record_fare_history(db, f, new_price, reason="Demand Simulation")
+
+            db.commit()
         finally:
-            db.close()  # close the session properly
-        time.sleep(60)
+            db.close()
+        time.sleep(60)  # repeat every 60 seconds
+
+
+@app.on_event("startup")
+def start_background_tasks():
+    threading.Thread(target=simulate_demand, daemon=True).start()

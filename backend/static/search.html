@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title>Search | Flight</title>
+    <!-- Search Styles -->
+    <link rel="stylesheet" href="/static/css/search_style.css">
+    <link rel="stylesheet" href="/static/css/search2_style.css">
+
+    <div id="head-placeholder"></div>
+
+</head>
+
+<body>
+    <div id="navbar-placeholder"></div>
+    <section class="section section1">
+
+        <!-- ================= TRIP INFO ================= -->
+        <div class="query-data-div">
+            <div class="container">
+
+                <div class="trip-places">
+                    <div class="from-div text-align-left">
+                        <div class="small-label">From</div>
+                        <div class="white">
+                            <span id="from-city">From City</span>
+                            (<span id="from-code">ORG</span>)
+                        </div>
+                    </div>
+
+                    <div class="trip-type-div white">
+                        <!-- One-way icon (default) -->
+                        <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-arrow-right" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z" />
+                        </svg>
+                    </div>
+
+                    <div class="to-div text-align-right">
+                        <div class="small-label">To</div>
+                        <div class="white">
+                            <span id="to-city">To City</span>
+                            (<span id="to-code">DST</span>)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="v-line"></div>
+
+                <!-- ================= DATES ================= -->
+                <div class="trip-time">
+                    <div class="depart-date-div">
+                        <div class="small-label">Depart</div>
+                        <div class="white" id="depart-date">Mon, 01 Jan 2026</div>
+                    </div>
+
+                    <div class="return-date-div">
+                        <div class="small-label">Return</div>
+                        <div class="white" id="return-date">--</div>
+                    </div>
+                </div>
+
+                <div class="v-line"></div>
+
+                <!-- ================= CLASS ================= -->
+                <div class="trip-class">
+                    <div class="return-date-div">
+                        <div class="small-label">Class</div>
+                        <div class="white" id="seat-class">Price</div>
+                    </div>
+                </div>
+
+                <div class="v-line"></div>
+
+                <!-- ================= MODIFY SEARCH ================= -->
+                <div class="trip-modify">
+                    <form action="/" method="POST">
+                        <input type="hidden" name="Origin" value="ORG">
+                        <input type="hidden" name="Destination" value="DST">
+                        <input type="hidden" name="DepartDate" value="2026-01-01">
+                        <input type="hidden" name="ReturnDate" value="">
+                        <input type="hidden" name="SeatClass" value="economy">
+                        <input type="hidden" name="TripType" value="1">
+
+                        <button class="btn spl-btn" type="submit">
+                            Modify Search
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ================= PRICE FILTER ================= -->
+        <div class="query-result-div">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-3 filter-div">
+                        <div class="filter-box">
+                            <h4>Price</h4>
+
+                            <input type="range" min="2000" max="10000" value="10000" id="priceRange"
+                                oninput="filterByPrice(this.value)">
+
+                            <div>
+                                ₹2000 -
+                                ₹<span id="max-price">10000</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- ================= FLIGHTS LIST ================= -->
+                    <div class="col-lg-9">
+
+                        <!-- DEPARTURE FLIGHTS -->
+                        <div class="flights-list">
+                            <h4>Departure Flights</h4>
+                            <div id="departure-flights"></div>
+                        </div>
+
+                        <!-- RETURN FLIGHTS (ROUND TRIP) -->
+                        <div class="flights-list" id="return-section">
+                            <h4>Return Flights</h4>
+                            <div id="return-flights"></div>
+                        </div>
+                        <div id="fare-history" style="margin-bottom: 15px;">
+                            <h4>Fare History</h4>
+                            <p id="lowest-fare">Lowest: ₹--</p>
+                            <p id="highest-fare">Highest: ₹--</p>
+                            <p id="average-fare">Average: ₹--</p>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </section>
+    <div id="footer-placeholder"></div>
+
+</body>
+<script src="/static/js/include.js"></script>
+<script src="/static/js/layout.js"></script>
+<script src="/static/js/search2.js" defer></script>
+
+</html>

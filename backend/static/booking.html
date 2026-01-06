@@ -1,0 +1,172 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Bookings | Flight</title>
+    <div id="head-placeholder"></div>
+    <link rel="stylesheet" href="/static/css/bookings_style.css">
+</head>
+
+<body>
+    <div id="navbar-placeholder"></div>
+    <section class="section section1">
+        <div class="container">
+
+            <!-- ================= SINGLE BOOKING ITEM ================= -->
+<!-- Duplicate this block dynamically using JS -->
+<!-- <div class="row each-booking-div" id="REF123456">
+
+                <!- DATE -->
+<!-- <div class="col-2" style="display: flex;">
+                    <div style="display: flex; color: #666666; margin-top: auto;">
+                        <div>
+                            <span style="font-size: 2.1em;">12</span>
+                        </div>
+                        <div
+                            style="font-size: smaller; display: flex; margin: auto 0; padding-left: 5px; line-height: 1em;">
+                            <div style="margin: auto;">
+                                <div>Mon</div>
+                                <div>Jan'25</div>
+                            </div>
+                        </div>
+                    </div>
+                </div> -->
+
+<!-- ROUTE -->
+<!-- <div class="col-4 middle-div">
+                    <div style="width:100%">
+                        <div class="row places-div">
+                            <div style="max-width: 45%;">Origin City</div>
+                            <div>&nbsp;-&nbsp;</div>
+                            <div style="max-width: 45%;">Destination City</div>
+                        </div>
+                        <div class="row places-div" style="font-size: .8em; color: #999999;">
+                            Airline · Plane · 2 Passengers
+                        </div>
+                    </div>
+                </div>
+
+                REF NUMBER -
+    <div class="popup">
+        <div class="small-popup">
+            <div style="margin-bottom: 10px; font-size: 1.1em;">
+                <strong>Do you really want to cancel this ticket?</strong>
+            </div>
+            <div class="popup-actions">
+                <button class="btn btn-light" onclick="remove_popup()">Go Back</button>
+                <button class="btn btn-danger" id="cancel_ticket_btn" data-ref="" onclick="cancel_tkt()">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="footer-placeholder"></div>
+    <script src="/static/js/include.js"></script>
+    <script src="/static/js/layout.js"></script>
+    <script src="/static/js/booking.js" defer></script>
+</body>
+<div id="head-placeholder"></div>
+</html> -->
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>My Bookings | Flight</title>
+
+    <link rel="stylesheet" href="/static/css/bookings_style.css">
+
+    <div id="head-placeholder"></div>
+
+</head>
+
+
+
+<body>
+
+    <!-- Navbar -->
+
+    <div id="navbar-placeholder"></div>
+
+
+
+    <!-- Bookings Section -->
+
+    <section class="section section1">
+
+        <div class="container">
+
+            <!-- Dynamic bookings will be injected here -->
+
+            <div class="empty-state" style="display:none; padding:10%; text-align:center;">
+
+                <svg width="4em" height="4em" viewBox="0 0 16 16">
+
+                    <circle cx="8" cy="8" r="7" stroke="black" fill="none" />
+
+                    <text x="8" y="11" text-anchor="middle">!</text>
+
+                </svg>
+
+                <h3>Oops! Looks empty</h3>
+
+                <p>Looks like you don't have any bookings yet.</p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- Cancel Popup -->
+
+    <div class="popup" style="display:none;">
+
+        <div class="small-popup">
+
+            <div style="margin-bottom:10px; font-size:1.1em;">
+
+                <strong>Do you really want to cancel this ticket?</strong>
+
+            </div>
+
+            <div class="popup-actions">
+
+                <button class="btn btn-light" id="popup_go_back">Go Back</button>
+
+                <button class="btn btn-danger" id="cancel_ticket_btn" data-ref="">Cancel</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div id="footer-placeholder"></div>
+
+
+
+    <!-- Scripts -->
+
+    <script src="/static/js/include.js"></script>
+
+    <script src="/static/js/layout.js"></script>
+
+    <script src="/static/js/booking.js"></script>
+
+</body>
+
+
+
+</html>

@@ -1,0 +1,341 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto');
+
+*{
+    font-family: 'Roboto', sans-serif;
+}
+body{
+    background-color: #f5f5f5;
+    word-wrap: break-word;
+}
+.container{
+    cursor: pointer;
+}
+.each-booking-div{
+    width: 96%;
+    margin: 5px auto 8px auto;
+    transition-duration: .4s;
+    padding: 10px 15px;
+    background-color: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 5px;
+}
+.each-booking-div:hover{
+    box-shadow: 0 0 5px rgba(0, 0, 0, .1);
+    border-color: rgb(246,247,247);
+    background-color: rgb(246,247,247);
+}
+.btnp{
+    padding: .15rem .6rem;
+    font-size: .9em;
+    margin-top: 3px;
+    margin-bottom: 5px;
+}
+.each-booking-div > div{
+    display: flex;
+    overflow: auto;
+}
+.each-booking-div > div > div{
+    margin-top: auto;
+    margin-bottom: auto;
+    width: 100%;
+}
+.green, .red, .orange{
+    border-radius: 3px;
+    color: white;
+    padding-left: 5px;
+    padding-right: 5px;
+    font-size: .7em;
+}
+.green{
+    background-color: green;
+}
+.red{
+    background-color: red;
+}
+.orange{
+    background-color: orange;
+}
+.btnp:hover, .btnp:focus, .btnp:active{
+    background-color: rgb(246,247,247)!important;
+}
+
+/*
+.popup{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 999999999;
+}
+.cover{
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, .5);
+}
+@keyframes popup{
+    0%{
+        transform: scale(0.4);
+    }
+    100%{
+        transform: scale(1);
+    }
+}
+.popup-box{
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    background-color: white;
+    border-radius: 15px;
+    padding: 25px;
+    animation-name: popup;
+    animation-fill-mode: forwards;
+    animation-duration: .5s;
+}*/
+
+/* .popup{
+    display: none;
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999999;
+} */
+.popup-actions{
+    padding: 0px 5%;
+    display: flex;
+    justify-content: space-evenly;
+}
+.popup .btn{
+    padding-left: 30px;
+    padding-right: 30px;
+}
+
+.small-popup{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    background-color: white;
+    align-items: center;
+    text-align: center;
+    padding: 25px 20px;
+    overflow: auto;
+    border-radius: 10px;
+}
+/* Container Spacing */
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* The Card Itself */
+.booking-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+    overflow: hidden;
+    transition: transform 0.2s;
+    border: 1px solid #eee;
+}
+
+.booking-card:hover {
+    transform: translateY(-3px);
+}
+
+/* Card Header */
+.card-header {
+    background: #f8f9fa;
+    padding: 15px 25px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header .route {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #333;
+}
+
+.card-header .arrow {
+    color: #007bff;
+    margin: 0 10px;
+}
+
+.pnr-badge {
+    background: #333;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    letter-spacing: 1px;
+}
+
+/* Card Body (Grid Layout) */
+.card-body {
+    padding: 20px 25px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+}
+
+.info-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-group label {
+    font-size: 0.85em;
+    color: #777;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.info-group span {
+    font-weight: 600;
+    color: #222;
+}
+
+.info-group .price {
+    color: #28a745;
+    font-size: 1.2em;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    text-align: center;
+    width: fit-content;
+}
+
+.status-confirmed { background: #fff3cd; color: #856404; }
+.status-paid { background: #d4edda; color: #155724; }
+.status-cancelled { background: #f8d7da; color: #721c24; }
+
+/* Card Footer (Buttons) */
+.card-footer {
+    padding: 15px 25px;
+    border-top: 1px solid #eee;
+    background: #fafafa;
+    text-align: right;
+}
+
+/* Button Styles (Bootstrap-like) */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: opacity 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn:hover { opacity: 0.9; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-primary { background: #007bff; color: white; }
+.btn-success { background: #28a745; color: white; }
+.btn-light { background: #e2e6ea; color: #333; }
+
+/* Popup Styling Correction */
+.popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6); /* Slightly darker for better focus */
+    display: none; /* JavaScript switches this to 'flex' */
+    justify-content: center;
+    align-items: center;
+    z-index: 10000; /* Very high to stay above navbars */
+}
+
+.small-popup {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    text-align: center;
+    width: 90%;
+    max-width: 400px; /* Prevents it from being too wide on desktop */
+    position: relative; /* Changed from absolute because parent is flex */
+}
+
+.popup-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-around;
+}
+
+
+@media (max-width: 376px){
+    .popup-actions{
+        padding: 0;
+    }
+    .small-popup{
+        width: 80%;
+    }
+    .each-booking-div{
+        width: 100%;
+    }
+    .container{
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    .each-booking-div{
+        display: block;
+    }
+    .each-booking-div > div{
+        width: 100%;
+        max-width: 100%;
+        text-align: center;
+    }
+    .each-booking-div > div > div{
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .places-div{
+        display: flex;
+        justify-content: center;
+    }
+    .status-div, .booking-date-div{
+        display: flex;
+        justify-content: center;
+    }
+    .middle-div{
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+    .last-div{
+        margin-top: 5px;
+    }
+}
+
+.ticket-action-div{
+    display: flex;
+    justify-content: space-evenly;
+}
+
+.pbtn, .rbtn{
+    border: 0;
+}
+
+.cbtn:hover, .cbtn:focus, .cbtn:active{
+    color: #dc3545!important;
+}
+
+.pbtn:hover, .pbtn:focus, .pbtn:active{
+    color: #17a2b8!important;
+}
+
+.rbtn:hover, .rbtn:focus, .rbtn:active{
+    color: #007bff!important;
+}

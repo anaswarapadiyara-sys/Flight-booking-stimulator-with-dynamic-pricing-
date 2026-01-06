@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Contact | Flight</title>
+   <link rel="stylesheet" type="text/css" href="/static/css/contact.css">
+   <div id="head-placeholder"></div>
+</head>
+<body>
+    <div id="navbar-placeholder"></div>
+<section class="section section1"
+style="background: url('/static/img/contactbg.svg') no-repeat top center; background-size: cover;">
+
+    <div class="container">
+        <div class="row">
+
+            <!-- ================= LEFT INFO SECTION ================= -->
+            <div class="col-md-6 top-left-section">
+                <div class="section-heading">
+                    <h1>Get in touch with us</h1>
+                    <div class="line-dec"></div>
+                </div>
+
+                <div class="container-fluid">
+                    <div class="row-fluid-wrapper bb">
+
+                        <!-- EMAIL -->
+                        <div class="row-fluid">
+                            <div class="span12" style="text-align:left;">
+                                <span>
+                                    <a href="mailto:shop.ayush930@gmail.com">
+                                        <img src="https://www.peoplemetrics.com/hubfs/Website/email_1-blue-bottom.svg"
+                                             alt="email" width="52" height="40">
+                                    </a>
+                                    <a href="mailto:shop.ayush930@gmail.com"
+                                       style="color:#74828c; letter-spacing:.5px;">
+                                        shop.anu@gmail.com
+                                    </a>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- PHONE -->
+                        <div class="row-fluid">
+                            <div class="span12" style="text-align:left;">
+                                <span>
+                                    <a href="tel:+912159798030">
+                                        <img src="https://www.peoplemetrics.com/hubfs/Website/phone_1-blue-bottom.svg"
+                                             alt="phone" width="52" height="40">
+                                    </a>
+                                    <a href="tel:+912159798030" style="color:#74828c;">
+                                        (215) 979-XXXX
+                                    </a>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- ADDRESS -->
+                        <div class="row-fluid">
+                            <div class="span12" style="text-align:left;">
+                                <span>
+                                    <a href="https://g.page/DSCENGG?share" target="_blank">
+                                        <img src="https://www.peoplemetrics.com/hubfs/Website/pin-blue-bottom.svg"
+                                             alt="address" width="50" height="50">
+                                    </a>
+                                    <a href="https://g.page/DSCENGG?share"
+                                       style="color:#74828c;">
+                                        DSCE, Bangalore, India - 560078
+                                    </a>
+                                </span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= CONTACT FORM ================= -->
+            <div class="col-md-6 contact-form-box">
+                <div class="section-heading">
+
+                    <form id="ContactUs100" method="post" action="#"
+                          onsubmit="return ValidateForm(this);">
+
+                        <script>
+                            function ValidateForm(frm) {
+                                if (frm.Name.value === "") {
+                                    alert("Name is required.");
+                                    frm.Name.focus();
+                                    return false;
+                                }
+                                if (frm.FromEmailAddress.value === "") {
+                                    alert("Email address is required.");
+                                    frm.FromEmailAddress.focus();
+                                    return false;
+                                }
+                                if (
+                                    frm.FromEmailAddress.value.indexOf("@") < 1 ||
+                                    frm.FromEmailAddress.value.indexOf(".") < 1
+                                ) {
+                                    alert("Please enter a valid email address.");
+                                    frm.FromEmailAddress.focus();
+                                    return false;
+                                }
+                                if (frm.Comments.value === "") {
+                                    alert("Please enter comments or questions.");
+                                    frm.Comments.focus();
+                                    return false;
+                                }
+
+                                alert("Thank you for contacting us. We will get back to you soon.");
+                                return true;
+                            }
+                        </script>
+
+                        <table style="width:100%; max-width:550px; border:0;"
+                               cellpadding="8" cellspacing="0">
+
+                            <tr>
+                                <td><label for="Name">Name:</label></td>
+                                <td>
+                                    <input name="Name" type="text" maxlength="60"
+                                           placeholder="John Doe" required>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td><label for="PhoneNumber">Phone:</label></td>
+                                <td>
+                                    <input name="PhoneNumber" type="tel" maxlength="15"
+                                           placeholder="+91 9999988888" required>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td><label for="FromEmailAddress">Email:</label></td>
+                                <td>
+                                    <input name="FromEmailAddress" type="email" maxlength="90"
+                                           placeholder="john@gmail.com" required>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td><label for="Comments">Message:</label></td>
+                                <td>
+                                    <textarea name="Comments" rows="7" cols="40"
+                                              placeholder="Enter your message here..." required></textarea>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td></td>
+                                <td>
+                                    <button type="submit" class="btn btn-danger">
+                                        Send Message
+                                    </button>
+                                </td>
+                            </tr>
+
+                        </table>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+<div id="footer-placeholder"></div>
+
+ <script src="/static/js/include.js"></script>
+  <script src="/static/js/layout.js"></script>
+  <script src="/static/js/contzct.js" defer></script>
+</body>
+</html>

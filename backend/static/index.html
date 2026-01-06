@@ -1,467 +1,194 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Flight Booking Simulator</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 18px; }
-    input, select, button { padding:8px; margin:6px; }
-    table { border-collapse: collapse; width:100%; margin-top:12px; }
-    th, td { padding:8px; border:1px solid #ddd; text-align:left; }
-  </style>
-</head>
-<body>
-  <h2>Flight Booking Simulator (Demo)</h2>
-  <div>
-    <input id="origin" placeholder="Origin (e.g. DEL)" />
-    <input id="destination" placeholder="Destination (e.g. BOM)" />
-    <input id="date" type="date" />
-    <select id="sort">
-      <option value="">Sort by</option>
-      <option value="price">Price</option>
-      <option value="duration">Duration</option>
-    </select>
-    <button onclick="search()">Search</button>
-    <button onclick="loadAll()">Load All</button>
-  </div>
-  <div id="results"></div>
-
-<script>
-const API = "http://127.0.0.1:8000";  
-
-async function render(list){
-  if(!list || list.length===0){
-    document.getElementById('results').innerHTML = "<p>No flights.</p>"; 
-    return;
-  }
-
-  let html = '<table><tr><th>Flight</th><th>Airline</th><th>From</th><th>To</th><th>Depart</th><th>Arrive</th><th>Seats</th><th>Price</th><th>Action</th></tr>';
-  list.forEach(f=>{
-    html += `<tr>
-      <td>${f.flight_number}</td>
-      <td>${f.airline || 'Demo Airline'}</td>
-      <td>${f.origin}</td>
-      <td>${f.destination}</td>
-      <td>${new Date(f.departure_time).toLocaleString()}</td>
-      <td>${new Date(f.arrival_time).toLocaleString()}</td>
-      <td>${f.available_seats}/${f.total_seats || 100}</td>
-      <td>₹${f.price}</td>
-      <td>
-        <button onclick="book(${f.flight_id})">Book 1</button>
-        <button onclick="history(${f.flight_id})">History</button>
-      </td>
-    </tr>`;
-  });
-  html += '</table>';
-  document.getElementById('results').innerHTML = html;
-}
-
-async function loadAll(){ 
-  const res = await fetch(`${API}/flights`);     
-  const data = await res.json(); 
-  render(data); 
-}
-
-async function search(){
-  const o = document.getElementById('origin').value; 
-  const d = document.getElementById('destination').value;
-  const date = document.getElementById('date').value; 
-  const sort = document.getElementById('sort').value;
-
-  if(!o || !d || !date){
-    alert("Please enter origin, destination, and date");
-    return;
-  }
-
-  const params = new URLSearchParams();
-  params.append('origin', o);
-  params.append('destination', d);
-  params.append('date', date);
-  if(sort) params.append('sort_by', sort);
-
-  const res = await fetch(`${API}/search?` + params.toString());  
-  if(res.ok){
-    const data = await res.json();
-    render(data);
-  } else {
-    const e = await res.json();
-    alert('Error: ' + (e.detail || JSON.stringify(e)));
-  }
-}
-
-async function book(id){
-  const res = await fetch(`${API}/book/${id}?seats=1`, {method:'POST'});  
-  if(res.ok){ 
-    const j = await res.json(); 
-    alert('Booked 1 seat — price: ₹' + j.price_per_seat); 
-    loadAll(); 
-  } else { 
-    const e = await res.json(); 
-    alert('Error: ' + (e.detail || JSON.stringify(e))); 
-  }
-}
-
-async function history(id){
-  const res = await fetch(`${API}/fare-history/${id}`);   
-  if(res.ok){
-    const data = await res.json();
-    if(data.length === 0) alert('No fare history');
-    else alert(data.map(h => `${new Date(h.changed_at).toLocaleString()}: ₹${h.new_fare} (${h.change_reason})`).join('\n'));
-  } else {
-    alert('Failed to load fare history');
-  }
-}
-
-// Load all flights on page load
-loadAll();
-</script>
-
-
-</script>
-</body>
-</html> -->
-<!-- <!DOCTYPE html>
-
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flight Booking Simulator</title>
-    <style>
-      /* (Retain the original CSS from my previous response, with these additions) */
-
-/* Additional styles for new modals and elements */
-#load-all-btn {
-    padding: 0.75rem 1.5rem;
-    background: #e53e3e;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-#load-all-btn:hover {
-    background: #c53030;
-}
-
-#payment-details, #booking-details, #fare-history-content {
-    margin: 1rem 0;
-    padding: 1rem;
-    background: #f7fafc;
-    border-radius: 5px;
-}
-
-#fare-history-content p {
-    margin: 0.5rem 0;
-}
-
-#cancel-booking-btn {
-    background: #e53e3e;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-#cancel-booking-btn:hover {
-    background: #c53030;
-}
-
-/* Ensure modals stack properly */
-.modal {
-    /* (Original modal styles) */
-}
-
-/* Responsive updates */
-@media (max-width: 768px) {
-    #search-form {
-        flex-direction: column;
-    }
-    .flight-card {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .modal-content {
-        width: 95%;
-    }
-}
-</style>
-    </style>
+    <title>Home|Flight</title>
+    <div id="head-placeholder"></div>
 </head>
+
 <body>
-    <header>
-        <h1>Flight Booking Simulator</h1>
-        <p>Find, book, and manage flights with dynamic pricing</p>
-    </header>
-    
-    <main>
-        <section id="search-section">
-            <form id="search-form">
-                <input type="text" id="origin" placeholder="Origin (e.g., DEL)" required>
-                <input type="text" id="destination" placeholder="Destination (e.g., BOM)" required>
-                <input type="date" id="departure-date" required>
-                <select id="sort-by">
-                    <option value="">Sort by</option>
-                    <option value="price">Price</option>
-                    <option value="duration">Duration</option>
-                </select>
-                <button type="submit">Search Flights</button>
-                <button type="button" id="load-all-btn">Load All Flights</button>
-            </form>
-        </section>
-        
-        <section id="results-section" style="display: none;">
-            <h2>Available Flights</h2>
-            <div id="flights-list"></div>
-        </section>
-        
-         Booking Modal 
-        <div id="booking-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close" data-modal="booking">&times;</span>
-                <h2>Book Flight</h2>
-                <form id="booking-form">
-                    <input type="hidden" id="selected-flight-id">
-                    <input type="text" id="passenger-name" placeholder="Passenger Name" required>
-                    <input type="number" id="seat-count" placeholder="Number of Seats" min="1" required>
-                    <button type="submit">Confirm Booking</button>
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <a class="navbar-brand" href="/">
+            <img src="/static/img/icon_logo.png" height="34" alt="Logo">
+        </a>
+
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/booking">My Bookings</a>
+                </li>
+            </ul>
+
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <button class="btn btn-outline-danger" style="border-radius:25rem;"
+                        onclick="window.location.href='/login';">
+                        Login
+                    </button>
+                </li>
+            </ul>
+
+        </div>
+    </nav>
+
+    <!-- ================= FIRST SECTION ================= -->
+    <section class="section first-section" style="background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)),
+url('/static/img/plane3.12.jpg');">
+
+        <div class="banner-div">
+            <div class="banner">
+                <h1 class="banner-text">Book Domestic and International Flight Tickets</h1>
+            </div>
+        </div>
+
+        <div class="search-flight">
+            <div class="container">
+                <form class="search-flight-form">
+
+                    <div class="form-check-inline">
+                        <label>
+                            <input type="radio" name="TripType" value="1" checked> One-way
+                        </label>
+                        <label>
+                            <input type="radio" name="TripType" value="2"> Round Trip
+                        </label>
+                    </div>
+
+                    <div class="input-row">
+                        <label>From:</label>
+                        <input type="text" placeholder="From">
+                    </div>
+
+                    <div class="input-row">
+                        <label>To:</label>
+                        <input type="text" placeholder="To">
+                    </div>
+
+                    <div class="input-row">
+                        <label>Departure Date:</label>
+                        <input type="date">
+                    </div>
+
+                    <div class="input-row">
+                        <label>Return Date:</label>
+                        <input type="date">
+                    </div>
+
+                    <div class="input-row">
+                        <label>sort by:</label>
+                        <select>
+                            <option>price</option>
+                            <option>duration</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger" id="searchBtn">
+                        Search Flight
+                    </button>
+
                 </form>
             </div>
         </div>
-        
-         Payment Modal 
-        <div id="payment-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close" data-modal="payment">&times;</span>
-                <h2>Process Payment</h2>
-                <p id="payment-details"></p>
-                <button id="pay-btn">Pay Now</button>
+    </section>
+
+    <!-- ================= SECOND SECTION ================= -->
+    <section class="section second-section">
+        <div class="container">
+
+            <div class="section_title text-center mb_70">
+                <h2>Popular Destination</h2>
+            </div>
+
+            <div class="row popular_destinations">
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="single_destination"
+                        onclick="window.location.href='https://en.wikipedia.org/wiki/Tourism_in_Italy'">
+                        <div class="thumb">
+                            <img src="/static/img/destination/1.png" alt="">
+                        </div>
+                        <div class="content">
+                            <a href="#">Italy</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="single_destination"
+                        onclick="window.location.href='https://en.wikipedia.org/wiki/Tourism_in_Brazil'">
+                        <div class="thumb">
+                            <img src="/static/img/destination/2.png" alt="">
+                        </div>
+                        <div class="content">
+                            <a href="#">Brazil</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="single_destination"
+                        onclick="window.location.href='https://en.wikipedia.org/wiki/Tourism_in_the_United_States'">
+                        <div class="thumb">
+                            <img src="/static/img/destination/3.png" alt="">
+                        </div>
+                        <div class="content">
+                            <a href="#">America</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="single_destination"
+                        onclick="window.location.href='https://en.wikipedia.org/wiki/Tourism_in_Nepal'">
+                        <div class="thumb">
+                            <img src="/static/img/destination/4.png" alt="">
+                        </div>
+                        <div class="content">
+                            <a href="#">Nepal</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="single_destination"
+                        onclick="window.location.href='https://en.wikipedia.org/wiki/Tourism_in_the_Maldives'">
+                        <div class="thumb">
+                            <img src="/static/img/destination/5.png" alt="">
+                        </div>
+                        <div class="content">
+                            <a href="#">Maldives</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="single_destination"
+                        onclick="window.location.href='https://en.wikipedia.org/wiki/Tourism_in_Indonesia'">
+                        <div class="thumb">
+                            <img src="/static/img/destination/6.png" alt="">
+                        </div>
+                        <div class="content">
+                            <a href="#">Indonesia</a>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
-        
-        View Booking Modal 
-        <div id="view-bookindal" class="modal" style="display: none;">
-            <div class="modantent">
-                <span class=se" data-modal="view-booking">&times;</span>
-                <h2>Booking ils</h2>
-                <input type=t" id="pnr-input" placeholder="Enter PNR" required>
-                <button id="-booking-btn">View Booking</button>
-                <div id="boo-details" style="margin-top: 1rem;"></div>
-                <button id="el-booking-btn" style="display: none; margin-top: 1rem;">Cancel Booking</button>
-            </div>
-        </div>
-        
-         Fare History Modal 
-        <div id="fare-history-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close" data-modal="fare-history">&times;</span>
-                <h2>Fare History</h2>
-                <div id="fare-history-content"></div>
-            </div>
-        </div>
-    </main>
-    
-    <script src="script.js"></script>
+    </section>
+
+    <div id="footer-placeholder"></div>
+    <script src="/static/js/include.js"></script>
+    <script src="/static/js/layout.js"></script>
+    <script src="/static/js/index.js" defer></script>
 </body>
-<script>
-  const backendUrl = 'http://127.0.0.1:8000'; // Update to your backend URL if different
 
-// Search Flights
-document.getElementById('search-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const origin = document.getElementById('origin').value;
-    const destination = document.getElementById('destination').value;
-    const date = document.getElementById('departure-date').value;
-    const sortBy = document.getElementById('sort-by').value;
-    
-    const params = new URLSearchParams({ origin, destination, date });
-    if (sortBy) params.append('sort_by', sortBy);
-    
-    try {
-        const response = await fetch(`${backendUrl}/search?${params}`);
-        if (!response.ok) throw new Error(await response.text());
-        const flights = await response.json();
-        displayFlights(flights);
-    } catch (error) {
-        alert('Error searching flights: ' + error.message);
-    }
-});
-
-// Load All Flights
-document.getElementById('load-all-btn').addEventListener('click', async () => {
-    try {
-        const response = await fetch(`${backendUrl}/flights`);
-        if (!response.ok) throw new Error('Failed to load flights');
-        const flights = await response.json();
-        displayFlights(flights);
-    } catch (error) {
-        alert('Error loading flights: ' + error.message);
-    }
-});
-
-// Display Flights
-function displayFlights(flights) {
-    const resultsSection = document.getElementById('results-section');
-    const flightsList = document.getElementById('flights-list');
-    flightsList.innerHTML = '';
-    
-    if (flights.length === 0) {
-        flightsList.innerHTML = '<p>No flights found.</p>';
-    } else {
-        flights.forEach(flight => {
-            const flightCard = document.createElement('div');
-            flightCard.className = 'flight-card';
-            flightCard.innerHTML = `
-                <div class="flight-info">
-                    <h3>${flight.flight_number}</h3>
-                    <p>${flight.origin} to ${flight.destination}</p>
-                    <p>Departure: ${new Date(flight.departure_time).toLocaleString()}</p>
-                    <p>Duration: ${flight.duration ? flight.duration.toFixed(1) + ' hours' : 'N/A'}</p>
-                    <p>Available Seats: ${flight.available_seats}</p>
-                </div>
-                <div>
-                    <p class="flight-price">$${flight.price}</p>
-                    <button class="book-btn" data-flight-id="${flight.flight_id}">Book Now</button>
-                    <button class="history-btn" data-flight-id="${flight.flight_id}">View Fare History</button>
-                </div>
-            `;
-            flightsList.appendChild(flightCard);
-        });
-    }
-    
-    resultsSection.style.display = 'block';
-    
-    // Attach event listeners
-    document.querySelectorAll('.book-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const flightId = e.target.getAttribute('data-flight-id');
-            openBookingModal(flightId);
-        });
-    });
-    
-    document.querySelectorAll('.history-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const flightId = e.target.getAttribute('data-flight-id');
-            viewFareHistory(flightId);
-        });
-    });
-}
-
-// Booking Modal
-function openBookingModal(flightId) {
-    document.getElementById('selected-flight-id').value = flightId;
-    document.getElementById('booking-modal').style.display = 'flex';
-}
-
-// Handle Booking
-document.getElementById('booking-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const flightId = document.getElementById('selected-flight-id').value;
-    const passengerName = document.getElementById('passenger-name').value;
-    const seatCount = parseInt(document.getElementById('seat-count').value);
-    
-    try {
-        const response = await fetch(`${backendUrl}/create-booking/${flightId}?seats=${seatCount}&passenger=${encodeURIComponent(passengerName)}`, {
-            method: 'POST'
-        });
-        if (!response.ok) throw new Error(await response.text());
-        const result = await response.json();
-        alert(`Booking created! PNR: ${result.pnr}, Total Price: $${result.total_price}`);
-        document.getElementById('booking-modal').style.display = 'none';
-        openPaymentModal(result.pnr, result.total_price);
-    } catch (error) {
-        alert('Error booking flight: ' + error.message);
-    }
-});
-
-// Payment Modal
-function openPaymentModal(pnr, totalPrice) {
-    document.getElementById('payment-details').innerHTML = `PNR: ${pnr}<br>Total Price: $${totalPrice}`;
-    document.getElementById('pay-btn').setAttribute('data-pnr', pnr);
-    document.getElementById('payment-modal').style.display = 'flex';
-}
-
-// Handle Payment
-document.getElementById('pay-btn').addEventListener('click', async () => {
-    const pnr = document.getElementById('pay-btn').getAttribute('data-pnr');
-    try {
-        const response = await fetch(`${backendUrl}/pay/${pnr}`, { method: 'POST' });
-        if (!response.ok) throw new Error(await response.text());
-        const result = await response.json();
-        alert(result.message);
-        document.getElementById('payment-modal').style.display = 'none';
-    } catch (error) {
-        alert('Error processing payment: ' + error.message);
-    }
-});
-
-// View Booking
-document.getElementById('view-booking-btn').addEventListener('click', async () => {
-    const pnr = document.getElementById('pnr-input').value;
-    try {
-        const response = await fetch(`${backendUrl}/booking/${pnr}`);
-        if (!response.ok) throw new Error(await response.text());
-        const booking = await response.json();
-        document.getElementById('booking-details').innerHTML = `
-            <p>PNR: ${booking.pnr}</p>
-            <p>Flight ID: ${booking.flight_id}</p>
-            <p>Passenger: ${booking.passenger}</p>
-            <p>Seats: ${booking.seats}</p>
-            <p>Total Price: $${booking.total_price}</p>
-            <p>Status: ${booking.status}</p>
-            <p>Booked At: ${new Date(booking.booked_at).toLocaleString()}</p>
-        `;
-        document.getElementById('cancel-booking-btn').style.display = booking.status === 'Confirmed' ? 'inline-block' : 'none';
-        document.getElementById('cancel-booking-btn').setAttribute('data-pnr', pnr);
-    } catch (error) {
-        alert('Error viewing booking: ' + error.message);
-    }
-});
-
-// Cancel Booking
-document.getElementById('cancel-booking-btn').addEventListener('click', async () => {
-    const pnr = document.getElementById('cancel-booking-btn').getAttribute('data-pnr');
-    try {
-        const response = await fetch(`${backendUrl}/cancel/${pnr}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error(await response.text());
-        const result = await response.json();
-        alert(result.message);
-        document.getElementById('view-booking-modal').style.display = 'none';
-    } catch (error) {
-        alert('Error canceling booking: ' + error.message);
-    }
-});
-
-// View Fare History
-async function viewFareHistory(flightId) {
-    try {
-        const response = await fetch(`${backendUrl}/fare-history/${flightId}`);
-        if (!response.ok) throw new Error('Failed to load fare history');
-        const history = await response.json();
-        const content = history.length === 0 ? '<p>No fare history available.</p>' : history.map(h => 
-            `<p>${new Date(h.changed_at).toLocaleString()}: $${h.new_fare} (${h.change_reason})</p>`
-        ).join('');
-        document.getElementById('fare-history-content').innerHTML = content;
-        document.getElementById('fare-history-modal').style.display = 'flex';
-    } catch (error) {
-        alert('Error loading fare history: ' + error.message);
-    }
-}
-
-// Close Modals
-document.querySelectorAll('.close').forEach(closeBtn => {
-    closeBtn.addEventListener('click', () => {
-        const modalId = closeBtn.getAttribute('data-modal');
-        document.getElementById(`${modalId}-modal`).style.display = 'none';
-    });
-});
-
-// Open View Booking Modal (via a button or link - add to UI if needed)
-document.addEventListener('DOMContentLoaded', () => {
-    // You can add a button in the header or elsewhere to open the view booking modal
-    // For now, it's accessible via the modal itself
-});
-</script>
-</html> -->
+</html>

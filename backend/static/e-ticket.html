@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>e-Ticket</title>
+    <link rel="icon" type="image/ico" href="/static/img/favicon.ico">
+
+    <style>
+        @page {
+            margin: 37px 50px;
+        }
+
+        * {
+            padding: 0;
+            margin: 0;
+            font-family: sans-serif;
+        }
+
+        body {
+            padding: 7% 7%;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .logo {
+            display: flex;
+        }
+
+        .header {
+            text-align: right;
+            font-size: 2em;
+            font-weight: 600;
+        }
+
+        li {
+            margin: 5px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table {
+            margin-top: 25px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 5px 15px;
+        }
+
+        .tr-caption {
+            background-color: #a9a9a9;
+            color: white;
+            font-weight: bold;
+            font-size: 1.4em;
+        }
+
+        .tr-even {
+            background-color: #f0f0f0;
+        }
+
+        .tr-odd {
+            background-color: white;
+        }
+
+        #downloadBtn {
+            background-color: #e12323;
+            /* Matching your "FLIGHT" logo red */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            display: block;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #downloadBtn:hover {
+            background-color: #b31b1b;
+            /* Darker red on hover */
+        }
+
+        #downloadBtn:active {
+            transform: scale(0.98);
+            /* Slight click effect */
+        }
+
+        #downloadBtn:disabled {
+            background-color: #a9a9a9;
+            /* Grey when downloading */
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <div class="logo" style="width: 50%;">
+            <span style="color: rgb(225,35,35); font-weight: bold; font-size: 2.5em;">
+                FLIGHT
+            </span>
+        </div>
+        <div class="header" style="width: 50%;">
+            E-Ticket
+        </div>
+    </nav>
+
+    <hr style="background-color: grey; height: 1px; border: none;">
+
+    <main style="padding: 10px;">
+
+        <!-- IMPORTANT INFO  -->
+        <div style="margin: 15px auto;">
+            <h3>Important information</h3>
+            <ul style="padding-left: 50px;">
+                <li>This is your E-Ticket itinerary. Please carry it to the airport.</li>
+                <li>A printed copy is required for security and boarding.</li>
+                <li>Economy passengers must report 3 hours before departure.</li>
+            </ul>
+        </div>
+
+        <!-- TICKET INFORMATION
+
+ TICKET INFO -->
+        <table class="table">
+            <tr class="tr-caption">
+                <td>TICKET INFORMATION</td>
+            </tr>
+        </table>
+
+        <table>
+            <tr class="tr-odd">
+                <th>PNR</th>
+                <td id="pnr"></td>
+                <th>BOOKING DATE</th>
+                <td id="bookingDate"></td>
+            </tr>
+            <tr class="tr-even">
+                <th>FLIGHT DATE</th>
+                <td id="flightDate"></td>
+                <th>CLASS</th>
+                <td>ECONOMY</td>
+            </tr>
+            <tr class="tr-odd">
+                <th>STATUS</th>
+                <td colspan="3">CONFIRMED</td>
+            </tr>
+        </table>
+
+        <!--PASSENGERS -->
+        <table class="table">
+            <tr class="tr-caption">
+                <td>PASSENGERS</td>
+            </tr>
+        </table>
+
+        <table>
+            <thead>
+                <tr class="tr-odd">
+                    <th>#</th>
+                    <th>NAME</th>
+                    <th>CLASS</th>
+                </tr>
+            </thead>
+            <tbody id="passengers"></tbody>
+        </table>
+
+        <!--FLIGHT INFO -->
+        <table class="table">
+            <tr class="tr-caption">
+                <td>FLIGHT DETAILS</td>
+            </tr>
+        </table>
+
+        <table>
+            <tr class="tr-even">
+                <td id="from"></td>
+                <td id="departure"></td>
+            </tr>
+            <tr class="tr-odd">
+                <td id="to"></td>
+                <td id="arrival"></td>
+            </tr>
+        </table>
+
+        <!-- FARE -->
+        <table class="table">
+            <tr class="tr-caption">
+                <td>FARE</td>
+            </tr>
+        </table>
+
+        <table>
+            <tr class="tr-even">
+                <th>TOTAL AMOUNT</th>
+                <td id="amount"></td>
+            </tr>
+        </table>
+        <button id="downloadBtn">Download PDF</button>
+
+
+    </main>
+
+    <p style="font-size: .8em; margin-top: 10px;">
+        © 2026 Flight Inc. All rights reserved.
+    </p>
+
+
+    <!-- <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+
+            const params = new URLSearchParams(window.location.search);
+            const pnr = params.get("ref");
+            const downloadBtn = document.getElementById("downloadBtn");
+
+            downloadBtn.onclick = () => {
+                window.open(`/ticket-pdf/${pnr}`);
+            };
+
+
+            if (!pnr) {
+                alert("PNR missing");
+                return;
+            }
+
+            document.getElementById("pnr").innerText = pnr;
+
+
+            const booking = await fetch(`/booking/${pnr}`).then(r => r.json());
+
+
+            const flight = await fetch(`/flight/${booking.flight_id}`).then(r => r.json());
+
+
+            const bookingDate = new Date(flight.departure_time);
+            document.getElementById("bookingDate").innerText =
+                bookingDate.toDateString();
+
+
+            document.getElementById("flightDate").innerText =
+                new Date(flight.departure_time).toDateString();
+
+            document.getElementById("from").innerText = flight.origin;
+            document.getElementById("to").innerText = flight.destination;
+
+
+            document.getElementById("departure").innerText =
+                new Date(flight.departure_time).toLocaleTimeString();
+
+            document.getElementById("arrival").innerText =
+                new Date(flight.arrival_time).toLocaleTimeString();
+
+            document.getElementById("amount").innerText =
+                `₹ ${booking.total_price}`;
+
+            // Passengers
+            const table = document.getElementById("passengers");
+            booking.passenger.split(",").forEach((p, i) => {
+                table.innerHTML += `
+            <tr class="${i % 2 ? 'tr-odd' : 'tr-even'}">
+                <td>${i + 1}</td>
+                <td>${p.trim()}</td>
+                <td>ECONOMY</td>
+            </tr>
+        `;
+            });
+
+            // try {
+            //     const email = "user@gmail.com"; 
+            //     const response = await fetch(`/send-ticket/${pnr}?email=${email}`, { method: "POST" });
+            //     const result = await response.json();
+            //     console.log("Ticket sent:", result);
+            // } catch (error) {
+            //     console.error("Failed to send ticket:", error);
+            // }
+        });
+    </script> -->
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const params = new URLSearchParams(window.location.search);
+            const pnr = params.get("ref");
+            const downloadBtn = document.getElementById("downloadBtn");
+
+            if (!pnr) {
+                alert("PNR missing");
+                return;
+            }
+
+            // --- 1. DOWNLOAD BUTTON LOGIC ---
+            downloadBtn.onclick = () => {
+                // Show a small UI hint
+                downloadBtn.innerText = "Downloading...";
+                downloadBtn.disabled = true;
+
+                // Trigger the FastAPI backend PDF route
+                window.location.href = `/ticket-pdf/${pnr}`;
+
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    downloadBtn.innerText = "Download PDF";
+                    downloadBtn.disabled = false;
+                }, 3000);
+            };
+
+            // --- 2. DISPLAY TICKET DATA ON SCREEN ---
+            document.getElementById("pnr").innerText = pnr;
+
+            try {
+                // Fetch booking details
+                const booking = await fetch(`/booking/${pnr}`).then(r => r.json());
+
+                // Fetch flight details
+                const flight = await fetch(`/flight/${booking.flight_id}`).then(r => r.json());
+
+                // Fill the UI fields
+                document.getElementById("bookingDate").innerText = new Date(flight.departure_time).toDateString();
+                document.getElementById("flightDate").innerText = new Date(flight.departure_time).toDateString();
+                document.getElementById("from").innerText = flight.origin;
+                document.getElementById("to").innerText = flight.destination;
+                document.getElementById("departure").innerText = new Date(flight.departure_time).toLocaleTimeString();
+                document.getElementById("arrival").innerText = new Date(flight.arrival_time).toLocaleTimeString();
+                document.getElementById("amount").innerText = `₹ ${booking.total_price}`;
+
+                // Handle Passenger Table
+                const table = document.getElementById("passengers");
+                table.innerHTML = ""; // Clear existing
+                booking.passenger.split(",").forEach((p, i) => {
+                    table.innerHTML += `
+                    <tr class="${i % 2 ? 'tr-odd' : 'tr-even'}">
+                        <td>${i + 1}</td>
+                        <td>${p.trim()}</td>
+                        <td>ECONOMY</td>
+                    </tr>
+                `;
+                });
+            } catch (error) {
+                console.error("Error loading ticket data:", error);
+                alert("Error loading ticket information.");
+            }
+        });
+    </script>
+</body>
+
+</html>
