@@ -45,8 +45,13 @@ conf = ConnectionConfig(
 
 # =============================
 #  DATABASE CONFIG (MySQL)
-# =============================
-DATABASE_URL = "mysql+mysqlconnector://root:WJ28%40DELI@localhost:3306/flight_booking"
+# =============================import os
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "mysql+mysqlconnector://root:WJ28%40DELI@localhost:3306/flight_booking",
+)
+
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = scoped_session(
