@@ -54,13 +54,13 @@ except ImportError:
 #  DATABASE CONFIG (MySQL)
 # =============================import os
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "mysql+mysqlconnector://root:WJ28%40DELI@localhost:3306/flight_booking",
-)
+# DATABASE_URL = os.getenv(
+#     "DATABASE_URL",
+#     "mysql+mysqlconnector://root:WJ28%40DELI@localhost:3306/flight_booking",
+# )
 
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+# engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = scoped_session(
     sessionmaker(autocommit=False, autoflush=False, bind=engine)
 )
