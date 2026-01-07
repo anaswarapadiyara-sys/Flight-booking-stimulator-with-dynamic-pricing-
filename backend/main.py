@@ -811,9 +811,14 @@
 
 
 # the main.py have update for mock data for deploying on the render
-from fastapi import FastAPI, HTTPException, Query, Form, Body, Response
+import os
+import random
+import threading
+import time
+from datetime import datetime
+from fastapi import FastAPI, HTTPException, Query, Body, Form, Response
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import (
     create_engine,
     Column,
@@ -825,24 +830,22 @@ from sqlalchemy import (
     cast,
     Date,
 )
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from pydantic import BaseModel
-from datetime import datetime, timedelta
-import random, threading, time, os
 
-# PDF generation optional
+# Optional PDF
 try:
     import pdfkit
 except ImportError:
     pdfkit = None
 
 # =============================
-# DATABASE CONFIG
+#  DATABASE CONFIG
 # =============================
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = None
 SessionLocal = None
+
 if DATABASE_URL:
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -851,7 +854,7 @@ Base = declarative_base()
 
 
 # =============================
-# MODELS
+#  MODELS
 # =============================
 class Flight(Base):
     __tablename__ = "flights"
@@ -903,71 +906,42 @@ class BookingRequest(BaseModel):
 
 
 # =============================
-# FAKE FLIGHTS (fallback if no DB)
+#  FASTAPI APP
 # =============================
-FAKE_FLIGHTS = [
-    {
-        "flight_id": 1,
-        "flight_number": "AI-101",
-        "origin": "Delhi",
-        "destination": "Mumbai",
-        "departure_time": "2026-01-10T10:00:00",
-        "arrival_time": "2026-01-10T12:00:00",
-        "available_seats": 30,
-        "price": 4500,
-    },
-    {
-        "flight_id": 2,
-        "flight_number": "AI-202",
-        "origin": "Delhi",
-        "destination": "Bangalore",
-        "departure_time": "2026-01-10T15:00:00",
-        "arrival_time": "2026-01-10T18:00:00",
-        "available_seats": 25,
-        "price": 6200,
-    },
-]
+app = FastAPI()
+
+# Static folder safe path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 # =============================
-# HELPERS
+#  UTILITY FUNCTIONS
 # =============================
-def get_db():
-    if not SessionLocal:
-        return None
-    return SessionLocal()
-
-
-def calculate_dynamic_price(flight):
-    # flight can be DB object or fake dict
-    try:
-        base_fare = (
-            flight.base_fare if hasattr(flight, "base_fare") else flight["price"]
-        )
-        total_seats = flight.total_seats if hasattr(flight, "total_seats") else 30
-        available_seats = (
-            flight.available_seats if hasattr(flight, "available_seats") else 30
-        )
-        departure_time = (
-            flight.departure_time
-            if hasattr(flight, "departure_time")
-            else datetime.fromisoformat(flight["departure_time"])
-        )
-    except:
-        return 1000  # fallback
-    remaining_seats = available_seats / total_seats
-    time_diff = (departure_time - datetime.now()).total_seconds() / 3600
+def calculate_dynamic_price(flight: Flight):
+    remaining_seats = flight.available_seats / flight.total_seats
+    time_diff = (flight.departure_time - datetime.now()).total_seconds() / 3600
     demand_factor = random.uniform(0.8, 1.4)
     seat_factor = 1.5 - remaining_seats
-    time_factor = 1.2 if time_diff < 6 else 1.1 if time_diff < 24 else 1.0
-    return round(
-        max(base_fare * demand_factor * seat_factor * time_factor, base_fare), 2
-    )
+
+    if time_diff < 6:
+        time_factor = 1.2
+    elif time_diff < 24:
+        time_factor = 1.1
+    else:
+        time_factor = 1.0
+
+    new_price = flight.base_fare * demand_factor * seat_factor * time_factor
+    return round(max(new_price, flight.base_fare), 2)
 
 
-def record_fare_history(db, flight, new_price, reason="Dynamic update"):
-    if not db or not hasattr(flight, "flight_id"):
-        return
+def record_fare_history(
+    db: Session, flight: Flight, new_price, reason="Dynamic update"
+):
     last_record = (
         db.query(FareHistory)
         .filter(FareHistory.flight_id == flight.flight_id)
@@ -976,15 +950,14 @@ def record_fare_history(db, flight, new_price, reason="Dynamic update"):
     )
     old_price = last_record.new_fare if last_record else flight.base_fare
     if old_price != new_price:
-        db.add(
-            FareHistory(
-                flight_id=flight.flight_id,
-                old_fare=old_price,
-                new_fare=new_price,
-                change_reason=reason,
-                changed_at=datetime.now(),
-            )
+        history = FareHistory(
+            flight_id=flight.flight_id,
+            old_fare=old_price,
+            new_fare=new_price,
+            change_reason=reason,
+            changed_at=datetime.now(),
         )
+        db.add(history)
         db.commit()
 
 
@@ -993,97 +966,98 @@ def generate_pnr():
 
 
 # =============================
-# FASTAPI APP
+#  PAGES
 # =============================
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
 @app.get("/")
 def home():
-    return FileResponse("static/index.html")
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
 @app.get("/search")
 def search_page():
-    return FileResponse("static/search.html")
+    return FileResponse(os.path.join(STATIC_DIR, "search.html"))
 
 
 @app.get("/book")
 def book_page():
-    return FileResponse("static/book.html")
+    return FileResponse(os.path.join(STATIC_DIR, "book.html"))
 
 
 @app.get("/booking")
 def booking_page():
-    return FileResponse("static/booking.html")
+    return FileResponse(os.path.join(STATIC_DIR, "booking.html"))
 
 
 @app.get("/payment")
 def payment_page():
-    return FileResponse("static/payment.html")
+    return FileResponse(os.path.join(STATIC_DIR, "payment.html"))
 
 
 @app.get("/paymentprocess")
 def paymentprocess_page():
-    return FileResponse("static/paymentprocess.html")
+    return FileResponse(os.path.join(STATIC_DIR, "paymentprocess.html"))
 
 
 @app.get("/ticket")
 def ticket_page():
-    return FileResponse("static/e-ticket.html")
+    return FileResponse(os.path.join(STATIC_DIR, "e-ticket.html"))
 
 
 @app.get("/login")
 def login_page():
-    return FileResponse("static/login.html")
+    return FileResponse(os.path.join(STATIC_DIR, "login.html"))
 
 
 # =============================
-# FLIGHT APIs
+#  FLIGHT APIs
 # =============================
 @app.get("/flights")
 def get_all_flights():
-    db = get_db()
-    if not db:
-        return FAKE_FLIGHTS
-    flights = db.query(Flight).all()
-    return [
-        {
-            "flight_id": f.flight_id,
-            "flight_number": f.flight_number,
-            "origin": f.origin,
-            "destination": f.destination,
-            "departure_time": f.departure_time.isoformat(),
-            "arrival_time": f.arrival_time.isoformat(),
-            "price": calculate_dynamic_price(f),
-            "available_seats": f.available_seats,
-        }
-        for f in flights
-    ]
+    if not SessionLocal:
+        return []
+    db = SessionLocal()
+    try:
+        flights = db.query(Flight).all()
+        result = []
+        for f in flights:
+            result.append(
+                {
+                    "flight_id": f.flight_id,
+                    "flight_number": f.flight_number,
+                    "origin": f.origin,
+                    "destination": f.destination,
+                    "departure_time": f.departure_time,
+                    "arrival_time": f.arrival_time,
+                    "price": calculate_dynamic_price(f),
+                    "available_seats": f.available_seats,
+                }
+            )
+        return result
+    finally:
+        db.close()
 
 
 @app.get("/flight/{flight_id}")
 def get_flight_by_id(flight_id: int):
-    db = get_db()
-    if not db:
-        flight = next((f for f in FAKE_FLIGHTS if f["flight_id"] == flight_id), None)
+    if not SessionLocal:
+        raise HTTPException(503, "Database not available")
+    db = SessionLocal()
+    try:
+        flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
         if not flight:
             raise HTTPException(404, "Flight not found")
-        return flight
-    flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
-    if not flight:
-        raise HTTPException(404, "Flight not found")
-    return {
-        "flight_id": flight.flight_id,
-        "flight_number": flight.flight_number,
-        "origin": flight.origin,
-        "destination": flight.destination,
-        "departure_time": flight.departure_time.isoformat(),
-        "arrival_time": flight.arrival_time.isoformat(),
-        "price": calculate_dynamic_price(flight),
-        "available_seats": flight.available_seats,
-    }
+        return {
+            "flight_id": flight.flight_id,
+            "flight_number": flight.flight_number,
+            "origin": flight.origin,
+            "destination": flight.destination,
+            "departure_time": flight.departure_time.isoformat(),
+            "arrival_time": flight.arrival_time.isoformat(),
+            "price": calculate_dynamic_price(flight),
+            "available_seats": flight.available_seats,
+        }
+    finally:
+        db.close()
 
 
 @app.get("/api/search")
@@ -1093,18 +1067,14 @@ def search_flights(
     date: str = Query(...),
     sort_by: str = Query(None),
 ):
-    db = get_db()
+    if not SessionLocal:
+        return []
+    db = SessionLocal()
     try:
-        search_date = datetime.strptime(date, "%Y-%m-%d").date()
-    except:
-        raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD")
-    result = []
-    if not db:
-        # fake data
-        for f in FAKE_FLIGHTS:
-            if f["origin"] == origin and f["destination"] == destination:
-                result.append(f)
-    else:
+        try:
+            search_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except Exception:
+            raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD")
         flights = (
             db.query(Flight)
             .filter(
@@ -1114,6 +1084,7 @@ def search_flights(
             )
             .all()
         )
+        result = []
         for f in flights:
             result.append(
                 {
@@ -1129,184 +1100,203 @@ def search_flights(
                     "available_seats": f.available_seats,
                 }
             )
-    if sort_by == "price":
-        result.sort(key=lambda x: x["price"])
-    if sort_by == "duration":
-        result.sort(key=lambda x: x["duration"])
-    return result
+        if sort_by == "price":
+            result.sort(key=lambda x: x["price"])
+        if sort_by == "duration":
+            result.sort(key=lambda x: x["duration"])
+        return result
+    finally:
+        db.close()
 
 
 # =============================
-# BOOKING / PAYMENT / CANCEL
+#  BOOKING APIs
 # =============================
 @app.post("/create-booking/{flight_id}")
 def create_booking(flight_id: int, request: BookingRequest = Body(...)):
-    db = get_db()
-    if not db:
-        return {
-            "pnr": generate_pnr(),
-            "total_price": request.seats * 1000,
-            "seats": request.seats,
-        }
-    flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
-    if not flight:
-        raise HTTPException(404, "Flight not found")
-    if flight.available_seats < request.seats:
-        raise HTTPException(400, "Not enough seats")
-    price_per_seat = calculate_dynamic_price(flight)
-    total_amount = round(price_per_seat * request.seats, 2)
-    flight.available_seats -= request.seats
-    pnr_code = generate_pnr()
-    booking = Booking(
-        pnr=pnr_code,
-        flight_id=flight.flight_id,
-        passenger_name=request.passenger,
-        email=request.email,
-        seat_count=request.seats,
-        total_price=total_amount,
-        status="Confirmed",
-    )
-    db.add(booking)
-    db.commit()
-    db.refresh(booking)
-    return {"pnr": pnr_code, "total_price": total_amount, "seats": request.seats}
+    if not SessionLocal:
+        raise HTTPException(503, "Database not available")
+    db = SessionLocal()
+    try:
+        flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
+        if not flight:
+            raise HTTPException(404, "Flight not found")
+        if flight.available_seats < request.seats:
+            raise HTTPException(400, "Not enough seats")
+
+        price_per_seat = calculate_dynamic_price(flight)
+        total_amount = round(price_per_seat * request.seats, 2)
+        flight.available_seats -= request.seats
+
+        pnr_code = generate_pnr()
+        booking = Booking(
+            pnr=pnr_code,
+            flight_id=flight.flight_id,
+            passenger_name=request.passenger,
+            email=request.email,
+            seat_count=request.seats,
+            total_price=total_amount,
+            status="Confirmed",
+        )
+        db.add(booking)
+        db.commit()
+        db.refresh(booking)
+        return {"pnr": pnr_code, "total_price": total_amount, "seats": request.seats}
+    finally:
+        db.close()
 
 
 @app.post("/pay/{pnr}")
 def process_payment(pnr: str):
-    db = get_db()
-    if not db:
-        return {"message": f"Payment cannot be processed for {pnr}, DB not available"}
-    booking = db.query(Booking).filter(Booking.pnr == pnr).first()
-    if not booking:
-        raise HTTPException(404, "Invalid PNR")
-    if booking.status == "Paid":
-        return {"message": "Payment already completed", "status": "Paid"}
-    booking.status = "Paid"
-    db.commit()
-    return {"message": "Payment successful", "pnr": pnr, "status": "Paid"}
-
-
-@app.delete("/cancel/{pnr}")
-def cancel_booking(pnr: str):
-    db = get_db()
-    if not db:
-        return {"message": f"Cannot cancel {pnr}, database not available"}
-    booking = db.query(Booking).filter(Booking.pnr == pnr).first()
-    if not booking:
-        raise HTTPException(404, "PNR not found")
-    if booking.status.lower() == "cancelled":
-        return {"message": "Already cancelled"}
-    flight = db.query(Flight).filter(Flight.flight_id == booking.flight_id).first()
-    if flight:
-        flight.available_seats += booking.seat_count
-    booking.status = "Cancelled"
-    db.commit()
-    return {"message": f"Booking {pnr} cancelled successfully"}
+    if not SessionLocal:
+        raise HTTPException(503, "Database not available")
+    db = SessionLocal()
+    try:
+        booking = db.query(Booking).filter(Booking.pnr == pnr).first()
+        if not booking:
+            raise HTTPException(404, "Invalid PNR")
+        if booking.status == "Paid":
+            return {"message": "Payment already done", "status": "Paid"}
+        booking.status = "Paid"
+        db.commit()
+        return {"message": "Payment successful", "pnr": pnr, "status": "Paid"}
+    finally:
+        db.close()
 
 
 @app.get("/booking/{pnr}")
 def get_booking(pnr: str):
-    db = get_db()
-    if not db:
-        return {"message": "Database not available", "pnr": pnr}
-    booking = db.query(Booking).filter(Booking.pnr == pnr).first()
-    if not booking:
-        raise HTTPException(404, "PNR Not Found")
-    return {
-        "pnr": booking.pnr,
-        "flight_id": booking.flight_id,
-        "passenger": booking.passenger_name,
-        "seats": booking.seat_count,
-        "total_price": booking.total_price,
-        "status": booking.status,
-        "booked_at": booking.booked_at,
-    }
-
-
-@app.get("/bookings")
-def list_all_bookings():
-    db = get_db()
-    if not db:
-        return FAKE_FLIGHTS
-    bookings = db.query(Booking).all()
-    return [
-        {
-            "pnr": b.pnr,
-            "passenger": b.passenger_name,
-            "flight_id": b.flight_id,
-            "seats": b.seat_count,
-            "total_price": b.total_price,
-            "status": b.status,
-            "booked_at": b.booked_at.isoformat(),
+    if not SessionLocal:
+        raise HTTPException(503, "Database not available")
+    db = SessionLocal()
+    try:
+        booking = db.query(Booking).filter(Booking.pnr == pnr).first()
+        if not booking:
+            raise HTTPException(404, "PNR Not Found")
+        return {
+            "pnr": booking.pnr,
+            "flight_id": booking.flight_id,
+            "passenger": booking.passenger_name,
+            "seats": booking.seat_count,
+            "total_price": booking.total_price,
+            "status": booking.status,
+            "booked_at": booking.booked_at.isoformat(),
         }
-        for b in bookings
-    ]
+    finally:
+        db.close()
 
 
-@app.get("/fare-history/{flight_id}")
-def get_fare_history(flight_id: int):
-    db = get_db()
-    if not db:
-        return {"message": "Database not available", "history": []}
-    history = (
-        db.query(FareHistory)
-        .filter(FareHistory.flight_id == flight_id)
-        .order_by(FareHistory.changed_at.desc())
-        .all()
-    )
-    return [
-        {
-            "old_fare": h.old_fare,
-            "new_fare": h.new_fare,
-            "change_reason": h.change_reason,
-            "changed_at": h.changed_at,
-        }
-        for h in history
-    ]
+@app.delete("/cancel/{pnr}")
+def cancel_booking(pnr: str):
+    if not SessionLocal:
+        raise HTTPException(503, "Database not available")
+    db = SessionLocal()
+    try:
+        booking = db.query(Booking).filter(Booking.pnr == pnr).first()
+        if not booking:
+            raise HTTPException(404, "PNR not found")
+        if booking.status.lower() == "cancelled":
+            return {"message": "Already cancelled"}
+        flight = db.query(Flight).filter(Flight.flight_id == booking.flight_id).first()
+        if flight:
+            flight.available_seats += booking.seat_count
+        booking.status = "Cancelled"
+        db.commit()
+        return {"message": f"Booking {pnr} cancelled successfully"}
+    finally:
+        db.close()
 
 
 # =============================
-# LOGIN
+#  LOGIN
 # =============================
 @app.post("/login")
 def login(username: str = Form(...), password: str = Form(...)):
-    db = get_db()
-    if not db:
-        return {"status": "error", "message": "Database not available"}
-    user = db.query(User).filter(User.username == username).first()
-    if not user:
-        return JSONResponse(
-            status_code=401,
-            content={"status": "error", "message": "User does not exist"},
-        )
-    if user.password != password:
-        return JSONResponse(
-            status_code=401,
-            content={"status": "error", "message": "Incorrect password"},
-        )
-    return {"status": "success", "message": "Login successful"}
+    if not SessionLocal:
+        raise HTTPException(503, "Database not available")
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "User does not exist"},
+            )
+        if user.password != password:
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "Incorrect password"},
+            )
+        return {"status": "success", "message": "Login successful"}
+    finally:
+        db.close()
 
 
 # =============================
-# BACKGROUND DEMAND SIMULATION
+#  PDF GENERATION
+# =============================
+@app.get("/ticket-pdf/{pnr}")
+def generate_ticket_pdf(pnr: str):
+    if pdfkit is None:
+        return JSONResponse(
+            status_code=503, content={"message": "PDF generation disabled"}
+        )
+    if not SessionLocal:
+        raise HTTPException(503, "Database not available")
+    db = SessionLocal()
+    try:
+        booking = db.query(Booking).filter(Booking.pnr == pnr).first()
+        if not booking:
+            raise HTTPException(404, "PNR not found")
+        flight = db.query(Flight).filter(Flight.flight_id == booking.flight_id).first()
+        if not flight:
+            raise HTTPException(404, "Flight not found")
+
+        passengers = booking.passenger_name.split(",")
+        rows = "".join(
+            [
+                f"<tr class={'tr-even' if i%2 else 'tr-odd'}><td>{i+1}</td><td>{p.strip()}</td><td>ECONOMY</td></tr>"
+                for i, p in enumerate(passengers)
+            ]
+        )
+        html_template = f"""
+        <html><head><style>
+        body {{ font-family:sans-serif; padding:20px; }}
+        table {{ width:100%; border-collapse: collapse; }}
+        th,td {{ border:1px solid #ddd; padding:10px; }}
+        .tr-even {{ background-color:#f9f9f9; }}
+        </style></head><body>
+        <h2>E-Ticket PNR: {pnr}</h2>
+        <table><tr><th>#</th><th>Name</th><th>Class</th></tr>{rows}</table>
+        <p>Total Paid: ₹ {booking.total_price}</p>
+        </body></html>
+        """
+        pdf_content = pdfkit.from_string(html_template, False)
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=Ticket_{pnr}.pdf"},
+        )
+    finally:
+        db.close()
+
+
+# =============================
+#  BACKGROUND SIMULATION
 # =============================
 def simulate_demand():
+    if not SessionLocal:
+        return
     while True:
-        db = get_db()
-        if db:
+        db = SessionLocal()
+        try:
             flights = db.query(Flight).all()
             for f in flights:
                 new_price = calculate_dynamic_price(f)
-                last_record = (
-                    db.query(FareHistory)
-                    .filter(FareHistory.flight_id == f.flight_id)
-                    .order_by(FareHistory.changed_at.desc())
-                    .first()
-                )
-                if not last_record or last_record.new_fare != new_price:
-                    record_fare_history(db, f, new_price, "Demand Simulation")
+                record_fare_history(db, f, new_price, reason="Demand Simulation")
             db.commit()
+        finally:
+            db.close()
         time.sleep(60)
 
 
