@@ -1,11 +1,14 @@
 from fastapi import FastAPI, HTTPException, Query, Form, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from fastapi import Body
-from jinja2 import Template
 
-from jinja2 import Environment, FileSystemLoader
+# try:
+#     from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+# except ImportError:
+#     FastMail = None
+#     MessageSchema = None
+#     ConnectionConfig = None
+from fastapi import Body
 from io import BytesIO
 
 from fastapi.responses import JSONResponse
@@ -28,19 +31,23 @@ import uuid
 import threading
 import time
 import os
-import pdfkit
+
+try:
+    import pdfkit
+except ImportError:
+    pdfkit = None
 
 
-conf = ConnectionConfig(
-    MAIL_USERNAME="your_email@gmail.com",
-    MAIL_PASSWORD="your_app_password",
-    MAIL_FROM="your_email@gmail.com",
-    MAIL_SERVER="smtp.gmail.com",
-    MAIL_PORT=587,
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
-    USE_CREDENTIALS=True,
-)
+# conf = ConnectionConfig(
+#     MAIL_USERNAME="your_email@gmail.com",
+#     MAIL_PASSWORD="your_app_password",
+#     MAIL_FROM="your_email@gmail.com",
+#     MAIL_SERVER="smtp.gmail.com",
+#     MAIL_PORT=587,
+#     MAIL_STARTTLS=True,
+#     MAIL_SSL_TLS=False,
+#     USE_CREDENTIALS=True,
+# )
 
 
 # =============================
@@ -106,55 +113,55 @@ class BookingRequest(BaseModel):
     email: str
 
 
-def build_ticket_html(booking, flight):
-    passengers_html = ""
-    passengers = booking.passenger.split(",") if booking.passenger else []
+# def build_ticket_html(booking, flight):
+#     passengers_html = ""
+#     passengers = booking.passenger.split(",") if booking.passenger else []
 
-    for i, p in enumerate(passengers, start=1):
-        passengers_html += f"""
-        <tr>
-            <td>{i}</td>
-            <td>{p.strip()}</td>
-            <td>ECONOMY</td>
-        </tr>
-        """
+#     for i, p in enumerate(passengers, start=1):
+#         passengers_html += f"""
+#         <tr>
+#             <td>{i}</td>
+#             <td>{p.strip()}</td>
+#             <td>ECONOMY</td>
+#         </tr>
+#         """
 
-    return f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-body {{ font-family: Arial; }}
-table {{ width: 100%; border-collapse: collapse; }}
-th, td {{ border: 1px solid #000; padding: 6px; }}
-h2 {{ text-align: center; }}
-</style>
-</head>
+#     return f"""
+# <!DOCTYPE html>
+# <html>
+# <head>
+# <meta charset="UTF-8">
+# <style>
+# body {{ font-family: Arial; }}
+# table {{ width: 100%; border-collapse: collapse; }}
+# th, td {{ border: 1px solid #000; padding: 6px; }}
+# h2 {{ text-align: center; }}
+# </style>
+# </head>
 
-<body>
+# <body>
 
-<h2>E-Ticket</h2>
+# <h2>E-Ticket</h2>
 
-<p><b>PNR:</b> {booking.pnr}</p>
-<p><b>Status:</b> {booking.status}</p>
-<p><b>Total Amount:</b> ₹{booking.total_price}</p>
+# <p><b>PNR:</b> {booking.pnr}</p>
+# <p><b>Status:</b> {booking.status}</p>
+# <p><b>Total Amount:</b> ₹{booking.total_price}</p>
 
-<h3>Passengers</h3>
-<table>
-<tr><th>#</th><th>Name</th><th>Class</th></tr>
-{passengers_html}
-</table>
+# <h3>Passengers</h3>
+# <table>
+# <tr><th>#</th><th>Name</th><th>Class</th></tr>
+# {passengers_html}
+# </table>
 
-<h3>Flight Details</h3>
-<p><b>From:</b> {flight.origin}</p>
-<p><b>To:</b> {flight.destination}</p>
-<p><b>Departure:</b> {flight.departure_time}</p>
-<p><b>Arrival:</b> {flight.arrival_time}</p>
+# <h3>Flight Details</h3>
+# <p><b>From:</b> {flight.origin}</p>
+# <p><b>To:</b> {flight.destination}</p>
+# <p><b>Departure:</b> {flight.departure_time}</p>
+# <p><b>Arrival:</b> {flight.arrival_time}</p>
 
-</body>
-</html>
-"""
+# </body>
+# </html>
+# """
 
 
 # Create tables if not exist
@@ -543,21 +550,21 @@ async def process_payment(pnr: str):
     booking.status = "Paid"
     db.commit()
 
-    message = MessageSchema(
-        subject="Your Flight Ticket",
-        recipients=[booking.email],
-        body=f"""
-Your booking is confirmed 🎉
+    #     message = MessageSchema(
+    #         subject="Your Flight Ticket",
+    #         recipients=[booking.email],
+    #         body=f"""
+    # Your booking is confirmed 🎉
 
-PNR: {booking.pnr}
+    # PNR: {booking.pnr}
 
-Download your ticket:
-http://127.0.0.1:8000/ticket-pdf/{booking.pnr}
-""",
-    )
+    # Download your ticket:
+    # http://127.0.0.1:8000/ticket-pdf/{booking.pnr}
+    # """,
+    #     )
 
-    fm = FastMail(conf)
-    await fm.send_message(message)
+    #     fm = FastMail(conf)
+    #     await fm.send_message(message)
 
     return {"message": "Payment successful", "pnr": pnr, "status": "Paid"}
 
@@ -672,6 +679,14 @@ async def login(username: str = Form(...), password: str = Form(...)):
 
 @app.get("/ticket-pdf/{pnr}")
 async def generate_ticket_pdf(pnr: str):
+
+    if pdfkit is None:
+        return JSONResponse(
+            status_code=503,
+            content={"message": "PDF generation is disabled in cloud deployment"},
+        )
+
+    #  Local Windows-only path (works locally, ignored in cloud)
     path_to_wkhtmltopdf = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
     config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
 
@@ -680,31 +695,35 @@ async def generate_ticket_pdf(pnr: str):
         booking = db.query(Booking).filter(Booking.pnr == pnr).first()
         flight = db.query(Flight).filter(Flight.flight_id == booking.flight_id).first()
 
-        # 1. Build the rows for the passengers table
         passengers_list = booking.passenger_name.split(",")
         rows = ""
         for i, name in enumerate(passengers_list):
             row_class = "tr-odd" if i % 2 == 0 else "tr-even"
-            rows += f'<tr class="{row_class}"><td>{i+1}</td><td>{name.strip()}</td><td>ECONOMY</td></tr>'
+            rows += f"""
+            <tr class="{row_class}">
+                <td>{i+1}</td>
+                <td>{name.strip()}</td>
+                <td>ECONOMY</td>
+            </tr>
+            """
 
-        # 2. THE DESIGN (The html_template variable)
-        # We use f-strings to put flight.origin, pnr, etc., into the HTML
         html_template = f"""
         <html>
         <head>
             <style>
                 body {{ font-family: sans-serif; padding: 20px; color: #333; }}
-                .header {{ display: block; border-bottom: 2px solid red; padding-bottom: 10px; }}
+                .header {{ border-bottom: 2px solid red; padding-bottom: 10px; }}
                 .logo {{ color: red; font-size: 24px; font-weight: bold; }}
                 .ticket-title {{ float: right; font-size: 24px; color: #666; }}
                 table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
-                th, td {{ border: 1px solid #ddd; padding: 10px; text-align: left; }}
+                th, td {{ border: 1px solid #ddd; padding: 10px; }}
                 .caption {{ background-color: #a9a9a9; color: white; font-weight: bold; }}
                 .tr-even {{ background-color: #f9f9f9; }}
                 .total-section {{ text-align: right; margin-top: 20px; font-size: 18px; }}
             </style>
         </head>
         <body>
+
             <div class="header">
                 <span class="logo">FLIGHT INC.</span>
                 <span class="ticket-title">E-TICKET</span>
@@ -713,12 +732,8 @@ async def generate_ticket_pdf(pnr: str):
             <table>
                 <tr class="caption"><td colspan="4">BOOKING DETAILS</td></tr>
                 <tr>
-                    <th>PNR</th><td><strong>{pnr}</strong></td>
-                    <th>STATUS</th><td>CONFIRMED</td>
-                </tr>
-                <tr class="tr-even">
-                    <th>FLIGHT DATE</th><td>{flight.departure_time.strftime('%Y-%m-%d')}</td>
-                    <th>BOOKED AT</th><td>{booking.booked_at.strftime('%Y-%m-%d')}</td>
+                    <th>PNR</th><td>{pnr}</td>
+                    <th>Status</th><td>{booking.status}</td>
                 </tr>
             </table>
 
@@ -728,26 +743,14 @@ async def generate_ticket_pdf(pnr: str):
                 {rows}
             </table>
 
-            <table>
-                <tr class="caption"><td colspan="2">FLIGHT ITINERARY</td></tr>
-                <tr>
-                    <td><strong>FROM:</strong> {flight.origin}</td>
-                    <td><strong>DEPARTURE:</strong> {flight.departure_time.strftime('%H:%M')}</td>
-                </tr>
-                <tr class="tr-even">
-                    <td><strong>TO:</strong> {flight.destination}</td>
-                    <td><strong>ARRIVAL:</strong> {flight.arrival_time.strftime('%H:%M')}</td>
-                </tr>
-            </table>
-
             <div class="total-section">
-                <strong>TOTAL AMOUNT PAID: ₹ {booking.total_price}</strong>
+                <strong>Total Paid: ₹ {booking.total_price}</strong>
             </div>
+
         </body>
         </html>
         """
 
-        # 3. Convert that HTML string into a PDF
         pdf_content = pdfkit.from_string(html_template, False, configuration=config)
 
         return Response(
@@ -757,8 +760,8 @@ async def generate_ticket_pdf(pnr: str):
         )
 
     except Exception as e:
-        print(f"Error: {e}")
         return JSONResponse(status_code=500, content={"message": str(e)})
+
     finally:
         db.close()
 
